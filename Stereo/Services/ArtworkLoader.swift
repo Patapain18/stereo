@@ -39,8 +39,17 @@ final class ArtworkLoader {
     private let diskCache = ArtworkDiskCache()
 
     init() {
-        // Charge la liste des unresolved depuis disque
-        self.unresolved = diskCache.loadUnresolved()
+        // Migration : si la stratégie de résolution a changé, on purge les
+        // unresolved pour donner une chance à la nouvelle stratégie.
+        let currentStrategyVersion = 2
+        let storedVersion = UserDefaults.standard.integer(forKey: "stereo.artwork.strategyVersion")
+        if storedVersion < currentStrategyVersion {
+            diskCache.saveUnresolved([])
+            UserDefaults.standard.set(currentStrategyVersion, forKey: "stereo.artwork.strategyVersion")
+            self.unresolved = []
+        } else {
+            self.unresolved = diskCache.loadUnresolved()
+        }
     }
 
     /// Renvoie l'image si déjà en cache mémoire, nil sinon. Ne déclenche pas de fetch.
@@ -58,17 +67,67 @@ final class ArtworkLoader {
         return nil
     }
 
-    /// S'assure qu'au moins une pochette est résolue pour l'album. Tente
-    /// l'un après l'autre les tracks tant qu'il n'y a pas d'image cached
-    /// et que tous ne sont pas marqués unresolved.
+    /// S'assure qu'au moins une pochette est résolue pour l'album.
+    /// Stratégie : utilise entity=album d'iTunes (plus précis pour les albums)
+    /// et propage l'image à TOUS les track IDs de l'album.
     func ensureAlbumLoaded(tracks: [Track]) {
-        // Déjà une image en cache → rien à faire
         if firstImage(amongTracks: tracks) != nil { return }
-        // Lance le fetch du premier track non encore tenté
-        for t in tracks {
-            if cache[t.id] == nil, !unresolved.contains(t.id), !inFlight.contains(t.id) {
-                ensureLoaded(for: t)
-                return  // un seul à la fois pour ne pas spammer iTunes Search
+        guard let first = tracks.first else { return }
+
+        // Évite double-fetch
+        let albumKey = "album-" + (first.album.isEmpty ? first.title : first.album).lowercased()
+        if inFlight.contains(albumKey) { return }
+        inFlight.insert(albumKey)
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            defer { self.inFlight.remove(albumKey) }
+
+            // 1. Résolution via entity=album
+            let albumName = first.album.isEmpty ? first.title : first.album
+            let url = await ITunesSearch.shared.resolveAlbumArtwork(
+                album: albumName,
+                artist: first.artist
+            )
+
+            // 2. Fallback : ancienne stratégie track par track
+            var imageURL = url
+            if imageURL == nil {
+                for t in tracks {
+                    if let u = await ITunesSearch.shared.resolveArtwork(
+                        title: t.title, artist: t.artist
+                    ) {
+                        imageURL = u
+                        break
+                    }
+                }
+            }
+
+            guard let final = imageURL else {
+                // Marque tous les tracks unresolved pour ne pas re-tenter en boucle
+                for t in tracks {
+                    self.unresolved.insert(t.id)
+                }
+                self.diskCache.saveUnresolved(self.unresolved)
+                return
+            }
+
+            // 3. Télécharge l'image
+            do {
+                let (data, _) = try await URLSession.shared.data(from: final)
+                guard let image = NSImage(data: data) else { return }
+                // 4. Stocke pour TOUS les tracks de l'album → toute card aura l'image
+                for t in tracks {
+                    self.cache[t.id] = image
+                    await self.diskCache.save(data: data, for: t.id)
+                    self.unresolved.remove(t.id)
+                }
+                self.diskCache.saveUnresolved(self.unresolved)
+            } catch {
+                for t in tracks {
+                    self.unresolved.insert(t.id)
+                }
+                self.diskCache.saveUnresolved(self.unresolved)
             }
         }
     }

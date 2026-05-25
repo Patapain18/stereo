@@ -107,6 +107,54 @@ actor ITunesSearch {
         }
     }
 
+    /// Cherche l'artwork d'un album entier via entity=album.
+    /// Beaucoup plus précis que resolveArtwork(title:artist:) pour les pochettes
+    /// d'albums : l'API iTunes match mieux quand on lui demande spécifiquement
+    /// un album plutôt qu'un track.
+    func resolveAlbumArtwork(album: String, artist: String) async -> URL? {
+        let trimmedAlbum = album.trimmingCharacters(in: .whitespaces)
+        let trimmedArtist = artist.trimmingCharacters(in: .whitespaces)
+        guard !trimmedAlbum.isEmpty else { return nil }
+        let query = "\(trimmedArtist) \(trimmedAlbum)".trimmingCharacters(in: .whitespaces)
+
+        do {
+            try await limiter.acquire()
+            var components = URLComponents(string: "https://itunes.apple.com/search")!
+            components.queryItems = [
+                URLQueryItem(name: "term", value: query),
+                URLQueryItem(name: "entity", value: "album"),
+                URLQueryItem(name: "limit", value: "1"),
+                URLQueryItem(name: "media", value: "music")
+            ]
+            guard let url = components.url else { return nil }
+
+            var request = URLRequest(url: url)
+            request.setValue("Stereo/0.1 (macOS; +https://github.com/local)", forHTTPHeaderField: "User-Agent")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                if http.statusCode == 403 || http.statusCode == 429 {
+                    await limiter.markBlocked()
+                    return nil
+                }
+                guard (200..<300).contains(http.statusCode) else { return nil }
+            }
+
+            struct AlbumResponse: Codable {
+                let results: [AlbumItem]
+            }
+            struct AlbumItem: Codable {
+                let artworkUrl100: String?
+            }
+            let parsed = try JSONDecoder().decode(AlbumResponse.self, from: data)
+            guard let raw = parsed.results.first?.artworkUrl100 else { return nil }
+            return Self.upscaleArtwork(raw)
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: — Helpers
 
     private func call(term: String, limit: Int) async throws -> ITunesSearchResponse {
