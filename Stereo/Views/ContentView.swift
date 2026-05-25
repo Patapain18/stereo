@@ -32,6 +32,9 @@ struct ContentView: View {
             }
         }
         .environment(\.cassetteNamespace, cassetteNamespace)
+        // Bascule l'appearance SwiftUI → toutes les couleurs adaptives de Theme
+        // (inkLight, textMute, surface, border…) basculent automatiquement.
+        .preferredColorScheme(app.isNightMode ? .dark : .light)
     }
 
     private var mainShell: some View {

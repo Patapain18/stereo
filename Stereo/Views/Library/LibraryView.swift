@@ -75,16 +75,10 @@ struct LibraryView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "music.note.house")
-                .font(.system(size: 40, weight: .ultraLight))
-                .foregroundStyle(.secondary)
-            Text("Bibliothèque vide")
-                .font(Theme.serif(size: 16))
-            Text("Ouvre Apple Music et ajoute des morceaux à ta bibliothèque.")
-                .font(Theme.mono(size: 11))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyStateView(
+            icon: "music.note.house",
+            title: "ta bibliothèque est vide",
+            hint: "ouvre Apple Music et ajoute des morceaux à ta bibliothèque pour qu'ils apparaissent ici. ils seront synchronisés automatiquement."
+        )
     }
 }

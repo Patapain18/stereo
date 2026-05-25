@@ -45,9 +45,11 @@ private struct PlaylistsGrid: View {
             .padding(24)
 
             if library.playlists.isEmpty {
-                Text("Aucune playlist")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                EmptyStateView(
+                    icon: "square.stack",
+                    title: "aucune playlist Apple Music",
+                    hint: "crée des playlists dans Apple Music — elles apparaîtront ici automatiquement avec leurs morceaux."
+                )
             } else {
                 ScrollView {
                     LazyVGrid(

@@ -2,45 +2,66 @@
 //  FavoritesView.swift
 //  Stereo · Views/Favorites/FavoritesView.swift
 //
+//  Recherche les tracks favorites dans TOUTES les sources : bibliothèque Apple
+//  Music, bibliothèque SoundCloud, fichiers locaux. Avant cette refonte, seuls
+//  les favoris de la biblio Apple Music apparaissaient (bug subtil).
+//
 
 import SwiftUI
 
 struct FavoritesView: View {
     @Environment(LibraryStore.self) private var library
+    @Environment(SoundCloudLibrary.self) private var scLibrary
+    @Environment(LocalLibrary.self) private var localLib
     @Environment(Favorites.self) private var favorites
+    @Environment(AppState.self) private var app
 
+    /// Tracks favorites trouvés dans n'importe quelle source connue
     private var favTracks: [Track] {
-        library.tracks.filter { favorites.contains($0) }
+        let all = library.tracks + scLibrary.tracks + localLib.tracks
+        return all.filter { favorites.contains($0) }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Favoris")
-                        .font(Theme.serif(size: 28, weight: .semibold))
-                    Text("\(favTracks.count) morceaux")
-                        .font(Theme.mono(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(24)
+            header
+            content
+        }
+    }
 
-            if favTracks.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "heart.slash")
-                        .font(.system(size: 40, weight: .ultraLight))
-                        .foregroundStyle(.secondary)
-                    Text("Aucun favori pour l'instant")
-                        .font(Theme.serif(size: 14))
-                    Text("Clic droit sur un morceau → Ajouter aux favoris")
-                        .font(Theme.mono(size: 10))
-                        .foregroundStyle(.secondary)
+    private var header: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Favoris")
+                    .font(Theme.serif(size: 28, weight: .semibold))
+                Text("\(favTracks.count) morceau\(favTracks.count > 1 ? "x" : "")")
+                    .font(Theme.typewriter(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding(24)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if favTracks.isEmpty {
+            EmptyStateView(
+                icon: "heart",
+                title: "aucun favori pour l'instant",
+                hint: "ajoute tes morceaux préférés avec un clic droit\n→ « Ajouter aux favoris »",
+                actionLabel: "Aller à la bibliothèque",
+                actionIcon: "books.vertical",
+                action: {
+                    app.page = .library
+                    app.pageArg = nil
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
+            )
+        } else {
+            if app.libraryViewMode == .shelf {
                 ShelfView(tracks: favTracks)
+            } else {
+                TrackListView(tracks: favTracks)
             }
         }
     }
