@@ -28,6 +28,7 @@ struct AlbumCoverArt: View {
                 if let img = image {
                     Image(nsImage: img)
                         .resizable()
+                        .interpolation(.medium)  // qualité réduite = plus rapide au scroll
                         .scaledToFill()
                         .frame(width: side, height: side)
                         .clipped()
@@ -55,7 +56,11 @@ struct AlbumCoverArt: View {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(Color.black.opacity(0.25), lineWidth: 0.5)
             )
-            .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 3)
+            .shadow(color: .black.opacity(0.30), radius: 4, x: 0, y: 2)
+            // drawingGroup() rasterise le rendu en une texture GPU → bcp moins
+            // cher lors du scroll d'une grande grille (shadow + reflets calculés
+            // une fois puis cachés)
+            .drawingGroup()
         }
         .aspectRatio(1, contentMode: .fit)
         .onAppear {

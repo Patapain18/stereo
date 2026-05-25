@@ -41,7 +41,7 @@ final class ArtworkLoader {
     init() {
         // Migration : si la stratégie de résolution a changé, on purge les
         // unresolved pour donner une chance à la nouvelle stratégie.
-        let currentStrategyVersion = 2
+        let currentStrategyVersion = 3
         let storedVersion = UserDefaults.standard.integer(forKey: "stereo.artwork.strategyVersion")
         if storedVersion < currentStrategyVersion {
             diskCache.saveUnresolved([])
@@ -83,17 +83,26 @@ final class ArtworkLoader {
             guard let self else { return }
             defer { self.inFlight.remove(albumKey) }
 
-            // 1. Résolution via entity=album
             let albumName = first.album.isEmpty ? first.title : first.album
-            let url = await ITunesSearch.shared.resolveAlbumArtwork(
+
+            // Stratégie en cascade pour maximiser les chances de trouver
+            // une pochette officielle :
+            //
+            //   1. iTunes entity=album (rapide, beaucoup de catalogue)
+            //   2. iTunes entity=track (fallback, parfois match meilleur)
+            //   3. MusicBrainz + Cover Art Archive (artistes indé, petits labels)
+
+            var imageURL: URL?
+
+            // 1. iTunes entity=album
+            imageURL = await ITunesSearch.shared.resolveAlbumArtwork(
                 album: albumName,
                 artist: first.artist
             )
 
-            // 2. Fallback : ancienne stratégie track par track
-            var imageURL = url
+            // 2. iTunes entity=track (fallback)
             if imageURL == nil {
-                for t in tracks {
+                for t in tracks.prefix(3) {
                     if let u = await ITunesSearch.shared.resolveArtwork(
                         title: t.title, artist: t.artist
                     ) {
@@ -101,6 +110,14 @@ final class ArtworkLoader {
                         break
                     }
                 }
+            }
+
+            // 3. MusicBrainz + Cover Art Archive (artistes pas dans iTunes)
+            if imageURL == nil {
+                imageURL = await MusicBrainzClient.shared.resolveAlbumArtwork(
+                    album: albumName,
+                    artist: first.artist
+                )
             }
 
             guard let final = imageURL else {
