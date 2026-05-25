@@ -23,7 +23,7 @@ struct NowPlayingView: View {
         @Bindable var app = app
 
         ZStack {
-            // — Background dégradé + halos colorés
+            // — Background : pochette HD floue fullscreen + halos colorés
             backgroundLayer
 
             // — Particules de poussière
@@ -34,7 +34,11 @@ struct NowPlayingView: View {
                 topBar
                 Spacer()
                 if let track = player.current {
-                    deckSwitcher(track: track)
+                    HStack(alignment: .center, spacing: 50) {
+                        DeckHiFiView(track: track)
+                        trackMetaPanel(track: track)
+                    }
+                    .padding(.horizontal, 40)
                 } else {
                     emptyState
                 }
@@ -55,22 +59,6 @@ struct NowPlayingView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.night)
         .transition(.opacity.combined(with: .scale(scale: 1.02)))
-    }
-
-    @ViewBuilder
-    private func deckSwitcher(track: Track) -> some View {
-        switch app.deckStyle {
-        case .walkman:
-            walkmanBlock(track: track)
-        case .deck:
-            HStack(alignment: .center, spacing: 50) {
-                DeckHiFiView(track: track)
-                trackMetaPanel(track: track)
-            }
-            .padding(.horizontal, 40)
-        case .boombox:
-            BoomboxNPView(track: track)
-        }
     }
 
     private func trackMetaPanel(track: Track) -> some View {
@@ -101,11 +89,41 @@ struct NowPlayingView: View {
 
     // MARK: — Background
 
+    @Environment(ArtworkLoader.self) private var artworkLoader
+
     private var backgroundLayer: some View {
         ZStack {
+            // Fond nuit de base
             Theme.night
 
-            // Halo ocre en haut à droite
+            // — Pochette HD floue fullscreen (effet wallpaper)
+            // Si on a une image en cache pour le track actuel, on l'étale en
+            // background avec un gros blur. La couleur dominante de l'album
+            // devient l'ambiance du deck.
+            if let track = player.current,
+               let img = artworkLoader.image(for: track.id) {
+                Image(nsImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 60)
+                    .opacity(0.40)
+                    .saturation(1.2)
+                    .ignoresSafeArea()
+                    .overlay(
+                        // Voile pour assurer la lisibilité
+                        LinearGradient(
+                            colors: [
+                                Theme.night.opacity(0.45),
+                                Theme.night.opacity(0.75)
+                            ],
+                            startPoint: .top, endPoint: .bottom
+                        )
+                        .ignoresSafeArea()
+                    )
+                    .transition(.opacity)
+            }
+
+            // — Halo ocre en haut à droite (toujours présent, ambiance)
             Circle()
                 .fill(
                     RadialGradient(
@@ -118,7 +136,7 @@ struct NowPlayingView: View {
                 .frame(width: 480, height: 480)
                 .offset(x: 380, y: -240)
 
-            // Halo vert en bas à gauche
+            // — Halo vert en bas à gauche
             Circle()
                 .fill(
                     RadialGradient(
@@ -132,13 +150,13 @@ struct NowPlayingView: View {
                 .offset(x: -380, y: 280)
         }
         .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.4), value: player.current?.id)
     }
 
     // MARK: — Top bar
 
     private var topBar: some View {
-        @Bindable var app = app
-        return HStack {
+        HStack {
             Button(action: onClose) {
                 Text("↩ retour à la stéréo")
                     .font(Theme.hand(size: 15))
@@ -152,23 +170,13 @@ struct NowPlayingView: View {
             Spacer()
 
             if let track = player.current {
-                Text("~ EN COURS · \(sourceLabel(track.source)) · \(app.deckStyle.label.uppercased()) ~")
+                Text("~ EN COURS · \(sourceLabel(track.source)) · HI-FI ~")
                     .font(Theme.typewriter(size: 11))
                     .tracking(2)
                     .foregroundStyle(Theme.ocre)
             }
 
             Spacer()
-
-            // Style picker
-            Picker("Style", selection: $app.deckStyle) {
-                ForEach(DeckStyle.allCases, id: \.self) { style in
-                    Text(style.label).tag(style)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 220)
-            .padding(.horizontal, 8)
 
             Button(action: onClose) {
                 Image(systemName: "xmark")
