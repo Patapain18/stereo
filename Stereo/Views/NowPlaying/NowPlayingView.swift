@@ -35,8 +35,8 @@ struct NowPlayingView: View {
                 Spacer()
                 if let track = player.current {
                     HStack(alignment: .center, spacing: 50) {
-                        DeckHiFiView(track: track)
                         trackMetaPanel(track: track)
+                        DeckHiFiView(track: track)
                     }
                     .padding(.horizontal, 40)
                 } else {
