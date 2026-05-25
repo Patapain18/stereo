@@ -18,12 +18,19 @@ struct LibraryView: View {
     @Environment(AppState.self) private var app
     @Environment(LibraryStore.self) private var library
 
+    /// Tracks visibles : on exclut par défaut les fichiers uploadés localement
+    /// (typiquement des MP3 importés dans Apple Music depuis le Finder, qui
+    /// polluent la biblio avec des noms comme « 1162482526 » ou « signal_complexe »).
+    private var visibleTracks: [Track] {
+        library.tracks.filter { !$0.isLocalUpload }
+    }
+
     private var albumsAndSingles: (albums: [Album], singles: [Track]) {
-        library.tracks.groupedByAlbumAndSingles()
+        visibleTracks.groupedByAlbumAndSingles()
     }
 
     private var allAlbums: [Album] {
-        library.tracks.groupedByAlbum()
+        visibleTracks.groupedByAlbum()
     }
 
     private var currentAlbum: Album? {
@@ -68,9 +75,9 @@ struct LibraryView: View {
                 singles: albumsAndSingles.singles
             )
         case .shelf:
-            ShelfView(tracks: library.tracks)
+            ShelfView(tracks: visibleTracks)
         case .list:
-            TrackListView(tracks: library.tracks)
+            TrackListView(tracks: visibleTracks)
         }
     }
 
@@ -113,14 +120,16 @@ struct LibraryView: View {
     }
 
     private var headerSummary: String {
-        if library.tracks.isEmpty { return "—" }
+        if visibleTracks.isEmpty { return "—" }
+        let hiddenCount = library.tracks.count - visibleTracks.count
+        let hiddenSuffix = hiddenCount > 0 ? " · \(hiddenCount) uploads ignorés" : ""
         switch app.libraryViewMode {
         case .albums:
             let nbAlbums = albumsAndSingles.albums.count
             let nbSingles = albumsAndSingles.singles.count
-            return "\(nbAlbums) albums · \(nbSingles) singles · \(library.tracks.count) morceaux"
+            return "\(nbAlbums) albums · \(nbSingles) singles · \(visibleTracks.count) morceaux\(hiddenSuffix)"
         case .shelf, .list:
-            return "\(library.tracks.count) morceaux · Apple Music"
+            return "\(visibleTracks.count) morceaux · Apple Music\(hiddenSuffix)"
         }
     }
 

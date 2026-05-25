@@ -30,11 +30,16 @@ final class MusicLibrary {
                     try
                         set pid to persistent ID of t
                     end try
+                    set k to ""
+                    try
+                        set k to (kind of t as text)
+                    end try
                     set output to output & pid & "\\t" & ¬
                         (name of t) & "\\t" & ¬
                         (artist of t) & "\\t" & ¬
                         (album of t) & "\\t" & ¬
-                        (duration of t as text) & "\\n"
+                        (duration of t as text) & "\\t" & ¬
+                        k & "\\n"
                 end repeat
             end try
         end tell
@@ -155,8 +160,10 @@ final class MusicLibrary {
             guard parts.count >= 5 else { return nil }
             let pid = parts[0]
             // AppleScript respecte la locale FR : "180,5" au lieu de "180.5".
-            // On normalise avant de parser pour éviter Double() qui retourne nil.
             let durationStr = parts[4].replacingOccurrences(of: ",", with: ".")
+            // kind est optionnel (6e champ ajouté plus tard, peut manquer
+            // si l'ancien format de cache traîne)
+            let kind: String? = parts.count >= 6 ? parts[5] : nil
             return Track(
                 id: pid.isEmpty ? UUID().uuidString : "am-\(pid)",
                 title: parts[1],
@@ -165,7 +172,10 @@ final class MusicLibrary {
                 duration: Double(durationStr) ?? 0,
                 source: .appleMusic,
                 externalURL: nil,
-                previewURL: nil
+                previewURL: nil,
+                artworkURL: nil,
+                localFileURL: nil,
+                kind: kind
             )
         }
     }

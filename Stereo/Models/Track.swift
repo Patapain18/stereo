@@ -43,4 +43,21 @@ struct Track: Identifiable, Codable, Equatable, Hashable {
 
     /// Pour les tracks source = .localFile : URL absolue du fichier sur disque
     var localFileURL: URL?
+
+    /// Le 'kind' de track tel que reporté par Apple Music via AppleScript.
+    /// Permet de distinguer :
+    ///   - 'Apple Music song'         → catalogue Apple Music
+    ///   - 'Matched audio file'       → fichier matché au catalogue
+    ///   - 'Purchased AAC audio file' → acheté iTunes
+    ///   - 'MPEG audio file' / 'WAV audio file' → uploads locaux personnels
+    var kind: String?
+
+    /// True si ce track est un fichier uploadé localement par l'utilisateur
+    /// (et non issu du catalogue Apple Music). Heuristique : tout ce qui n'est
+    /// pas explicitement 'Apple Music', 'Matched', 'Purchased' ou 'Protected'.
+    var isLocalUpload: Bool {
+        guard let k = kind?.lowercased() else { return false }
+        let catalogueKinds = ["apple music", "matched", "purchased", "protected"]
+        return !catalogueKinds.contains { k.contains($0) }
+    }
 }
