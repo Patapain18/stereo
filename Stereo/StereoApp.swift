@@ -114,6 +114,13 @@ struct StereoApp: App {
             }
             .keyboardShortcut("t", modifiers: .command)
 
+            Button(app.sidebarVisible ? "Masquer la sidebar" : "Afficher la sidebar") {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    app.sidebarVisible.toggle()
+                }
+            }
+            .keyboardShortcut("s", modifiers: [.command, .shift])
+
             Button(app.radioVisible ? "Masquer la stéréo" : "Afficher la stéréo") {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     app.radioVisible.toggle()

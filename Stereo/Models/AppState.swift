@@ -78,6 +78,9 @@ final class AppState {
     }
 
     // Sprint 4 polish
+    var sidebarVisible: Bool = true {
+        didSet { UserDefaults.standard.set(sidebarVisible, forKey: Keys.sidebarVisible) }
+    }
     var radioVisible: Bool = true {
         didSet { UserDefaults.standard.set(radioVisible, forKey: Keys.radioVisible) }
     }
@@ -95,6 +98,9 @@ final class AppState {
         let d = UserDefaults.standard
         if d.object(forKey: Keys.isNightMode) != nil {
             isNightMode = d.bool(forKey: Keys.isNightMode)
+        }
+        if d.object(forKey: Keys.sidebarVisible) != nil {
+            sidebarVisible = d.bool(forKey: Keys.sidebarVisible)
         }
         if d.object(forKey: Keys.radioVisible) != nil {
             radioVisible = d.bool(forKey: Keys.radioVisible)
@@ -115,6 +121,7 @@ final class AppState {
 
     private enum Keys {
         static let isNightMode = "stereo.app.isNightMode"
+        static let sidebarVisible = "stereo.app.sidebarVisible"
         static let radioVisible = "stereo.app.radioVisible"
         static let showDust = "stereo.app.showDust"
         static let page = "stereo.app.page"

@@ -30,32 +30,59 @@ struct SidebarView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        // Force le même fond que le detail panel — sinon la sidebar a son
+        // material translucent par défaut et un seam visible apparaît.
+        .background(Theme.background)
+        .scrollContentBackground(.hidden)
+        .toolbarBackground(Theme.background, for: .windowToolbar)
     }
 
     // MARK: — Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("ma")
-                    .font(Theme.scribble(size: 26))
-                    .foregroundStyle(Theme.inkLight)
-                Text("stéréo")
-                    .font(Theme.scribble(size: 30))
-                    .foregroundStyle(Theme.inkLight)
+        @Bindable var app = app
+        return HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("ma")
+                        .font(Theme.scribble(size: 26))
+                        .foregroundStyle(Theme.inkLight)
+                    Text("stéréo")
+                        .font(Theme.scribble(size: 30))
+                        .foregroundStyle(Theme.inkLight)
+                        .overlay(
+                            UnderlineSketch()
+                                .stroke(Theme.ocre, lineWidth: 1.4)
+                                .frame(height: 6)
+                                .offset(y: 6),
+                            alignment: .bottom
+                        )
+                }
+                Text("café à 17h")
+                    .font(Theme.typewriter(size: 10))
+                    .tracking(1)
+                    .foregroundStyle(Theme.textMute)
+            }
+
+            Spacer()
+
+            // Bouton pour masquer la sidebar
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    app.sidebarVisible = false
+                }
+            } label: {
+                Image(systemName: "sidebar.left")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.textMute)
+                    .frame(width: 24, height: 24)
                     .overlay(
-                        UnderlineSketch()
-                            .stroke(Theme.ocre, lineWidth: 1.4)
-                            .frame(height: 6)
-                            .offset(y: 6),
-                        alignment: .bottom
+                        RoundedRectangle(cornerRadius: 6).stroke(Theme.border, lineWidth: 1)
                     )
             }
-            Text("café à 17h")
-                .font(Theme.typewriter(size: 10))
-                .tracking(1)
-                .foregroundStyle(Theme.textMute)
+            .buttonStyle(.pressFeedback)
+            .help("Masquer la sidebar (Cmd+Shift+S)")
         }
         .padding(.horizontal, 8)
         .padding(.top, 4)

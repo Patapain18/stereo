@@ -39,74 +39,90 @@ struct ContentView: View {
 
     private var mainShell: some View {
         @Bindable var app = app
-        return NavigationSplitView {
-            SidebarView()
-                .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 300)
-        } detail: {
-            ZStack {
-                // — Background : papier ou nuit
-                (app.isNightMode ? Theme.night : Theme.paper)
-                    .ignoresSafeArea()
+        return ZStack(alignment: .topLeading) {
+            // — Background uniforme partout (plus de seam entre sidebar/main)
+            Theme.background
+                .ignoresSafeArea()
 
-                // — Particules de poussière en arrière-plan
-                if app.showDust {
-                    DustParticles(
-                        count: 22,
-                        color: app.isNightMode ? Theme.ocre.opacity(0.6) : Theme.cassetteBody.opacity(0.4)
-                    )
+            // — Particules de poussière
+            if app.showDust {
+                DustParticles(
+                    count: 22,
+                    color: app.isNightMode ? Theme.ocre.opacity(0.6) : Theme.cassetteBody.opacity(0.4)
+                )
+            }
+
+            // — Shell HStack manuel : sidebar | main | radio
+            HStack(spacing: 0) {
+                if app.sidebarVisible {
+                    SidebarView()
+                        .frame(width: 230)
+                        .padding(.top, 28)  // respecte la zone des traffic lights
+                        .transition(
+                            .move(edge: .leading)
+                                .combined(with: .opacity)
+                        )
                 }
 
-                // — Contenu
-                HStack(spacing: 0) {
-                    // Colonne principale : page courante + mini-player
-                    VStack(spacing: 0) {
-                        ZStack {
-                            pageContent
-                                .id("\(app.page.rawValue)-\(app.pageArg ?? "")")
-                                .transition(
-                                    .asymmetric(
-                                        insertion: .opacity.combined(with: .scale(scale: 0.985)),
-                                        removal: .opacity
-                                    )
-                                )
-                        }
-                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.page)
-                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.pageArg)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                        MiniPlayer()
-                    }
-
-                    // Séparateur + RadioPanel
-                    if app.radioVisible {
-                        Divider()
-                            .background(Theme.border)
-
-                        RadioPanel()
-                            .frame(width: 320)
-                            .background(
-                                LinearGradient(
-                                    colors: [
-                                        Theme.night.opacity(0.6),
-                                        Theme.nightDeep.opacity(0.7)
-                                    ],
-                                    startPoint: .top, endPoint: .bottom
+                VStack(spacing: 0) {
+                    ZStack {
+                        pageContent
+                            .id("\(app.page.rawValue)-\(app.pageArg ?? "")")
+                            .transition(
+                                .asymmetric(
+                                    insertion: .opacity.combined(with: .scale(scale: 0.985)),
+                                    removal: .opacity
                                 )
                             )
                     }
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.page)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.pageArg)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    MiniPlayer()
+                }
+
+                if app.radioVisible {
+                    RadioPanel()
+                        .frame(width: 320)
+                        .padding(.top, 28)  // pareil pour le panneau droit
+                        .background(
+                            LinearGradient(
+                                colors: [
+                                    Theme.night.opacity(0.6),
+                                    Theme.nightDeep.opacity(0.7)
+                                ],
+                                startPoint: .top, endPoint: .bottom
+                            )
+                        )
+                        .transition(
+                            .move(edge: .trailing)
+                                .combined(with: .opacity)
+                        )
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            app.radioVisible.toggle()
-                        }
-                    } label: {
-                        Image(systemName: app.radioVisible ? "rectangle.righthalf.inset.filled" : "rectangle.righthalf.inset.filled.arrow.right")
+
+            // — Bouton flottant pour rouvrir la sidebar quand elle est cachée
+            // (positionné à droite des traffic lights de macOS)
+            if !app.sidebarVisible {
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        app.sidebarVisible = true
                     }
-                    .help(app.radioVisible ? "Masquer la stéréo" : "Afficher la stéréo")
+                } label: {
+                    Image(systemName: "sidebar.left")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Theme.inkLight)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.surface.opacity(0.7))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Theme.borderStrong, lineWidth: 1))
                 }
+                .buttonStyle(.pressFeedback)
+                .padding(.leading, 80)
+                .padding(.top, 14)
+                .transition(.opacity.combined(with: .scale(scale: 0.85)))
+                .help("Afficher la sidebar")
             }
         }
         .frame(minWidth: 980, minHeight: 640)
