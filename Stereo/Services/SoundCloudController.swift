@@ -37,7 +37,7 @@ final class SoundCloudController: NSObject {
 
     // MARK: — Internals
 
-    private var webView: WKWebView!
+    private var webView: WKWebView!  // créé paresseusement au premier load
     private var hostWindow: NSWindow?
     private var pendingTrack: Track? = nil
     private var pendingPlay: Bool = false
@@ -50,7 +50,9 @@ final class SoundCloudController: NSObject {
 
     override init() {
         super.init()
-        setupWebView()
+        // Diffère la création du webview au premier load(), pour laisser la
+        // main window SwiftUI s'établir d'abord. Sinon notre fenêtre offscreen
+        // se crée trop tôt et perturbe l'ordre des fenêtres (écran noir).
     }
 
     // MARK: — Setup
@@ -166,6 +168,12 @@ final class SoundCloudController: NSObject {
             print("⚠️ SC load: track invalide (source=\(track.source) externalURL=\(String(describing: track.externalURL)))")
             return
         }
+
+        // Setup paresseux du webview au premier load (évite l'écran noir au démarrage)
+        if webView == nil {
+            setupWebView()
+        }
+
         currentTrack = track
         onTrackChanged?(track)
 
@@ -273,6 +281,7 @@ final class SoundCloudController: NSObject {
     // MARK: — Helpers
 
     private func evaluate(_ js: String) {
+        guard let webView else { return }
         webView.evaluateJavaScript(js) { _, error in
             if let error {
                 print("⚠️ SC JS error: \(error.localizedDescription)")
