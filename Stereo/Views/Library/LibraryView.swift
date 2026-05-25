@@ -120,16 +120,18 @@ struct LibraryView: View {
     }
 
     private var headerSummary: String {
-        if visibleTracks.isEmpty { return "—" }
-        let hiddenCount = library.tracks.count - visibleTracks.count
+        let total = library.tracks.count
+        let visible = visibleTracks.count
+        if total == 0 { return library.isLoading ? "chargement…" : "—" }
+        let hiddenCount = total - visible
         let hiddenSuffix = hiddenCount > 0 ? " · \(hiddenCount) uploads ignorés" : ""
         switch app.libraryViewMode {
         case .albums:
             let nbAlbums = albumsAndSingles.albums.count
             let nbSingles = albumsAndSingles.singles.count
-            return "\(nbAlbums) albums · \(nbSingles) singles · \(visibleTracks.count) morceaux\(hiddenSuffix)"
+            return "\(nbAlbums) albums · \(nbSingles) singles · \(visible) morceaux\(hiddenSuffix)"
         case .shelf, .list:
-            return "\(visibleTracks.count) morceaux · Apple Music\(hiddenSuffix)"
+            return "\(visible) morceaux · Apple Music\(hiddenSuffix)"
         }
     }
 

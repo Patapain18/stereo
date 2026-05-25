@@ -19,6 +19,8 @@
 import SwiftUI
 import AppKit
 import Observation
+import ImageIO
+import UniformTypeIdentifiers
 import CryptoKit
 
 @MainActor
@@ -138,14 +140,17 @@ final class ArtworkLoader {
                 return
             }
 
-            // 3. Télécharge l'image
+            // 3. Télécharge l'image et la downsample (économise RAM/disque/render)
             do {
-                let (data, _) = try await URLSession.shared.data(from: final)
-                guard let image = NSImage(data: data) else { return }
+                let (rawData, _) = try await URLSession.shared.data(from: final)
+                // Downsample à 400×400 max — taille suffisante pour cards 200×200
+                // (avec retina 2×) et énorme gain mémoire/perf vs 1000×1000.
+                let optimizedData = Self.downsample(data: rawData, maxPixelSize: 400) ?? rawData
+                guard let image = NSImage(data: optimizedData) else { return }
                 // 4. Stocke pour TOUS les tracks de l'album → toute card aura l'image
                 for t in tracks {
                     self.cache[t.id] = image
-                    await self.diskCache.save(data: data, for: t.id)
+                    await self.diskCache.save(data: optimizedData, for: t.id)
                     self.unresolved.remove(t.id)
                 }
                 self.diskCache.saveUnresolved(self.unresolved)
@@ -214,6 +219,42 @@ final class ArtworkLoader {
         cache.removeAll()
         unresolved.removeAll()
         diskCache.clearAll()
+    }
+
+    /// Downsample une image pour réduire RAM/disque/render. Utilise ImageIO
+    /// pour rester rapide et préserver la qualité dans un format moderne (JPEG).
+    /// Retourne nil si le décodage échoue (la data originale sera utilisée).
+    nonisolated static func downsample(data: Data, maxPixelSize: CGFloat) -> Data? {
+        let sourceOptions: [CFString: Any] = [
+            kCGImageSourceShouldCache: false
+        ]
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions as CFDictionary) else {
+            return nil
+        }
+
+        let thumbnailOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize * 2  // ×2 pour Retina
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, thumbnailOptions as CFDictionary) else {
+            return nil
+        }
+
+        // Réencode en JPEG (compression 0.85, bon équilibre qualité/taille)
+        let outputData = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            outputData,
+            UTType.jpeg.identifier as CFString,
+            1, nil
+        ) else { return nil }
+        let destinationOptions: [CFString: Any] = [
+            kCGImageDestinationLossyCompressionQuality: 0.85
+        ]
+        CGImageDestinationAddImage(destination, cgImage, destinationOptions as CFDictionary)
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return outputData as Data
     }
 }
 

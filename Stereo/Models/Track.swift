@@ -57,10 +57,18 @@ struct Track: Identifiable, Codable, Equatable, Hashable {
     /// pas explicitement un kind "catalogue" connu (EN + FR — Apple Music
     /// utilise les noms en français sur les Mac configurés en FR).
     var isLocalUpload: Bool {
-        guard let k = kind?.lowercased(), !k.isEmpty else {
-            // kind manquant → on présume catalogue (safe default)
+        guard let rawKind = kind?.lowercased(), !rawKind.isEmpty else {
             return false
         }
+        // Apple Music FR utilise des non-breaking spaces (U+00A0) entre les
+        // mots, donc 'apple\u{00A0}music' ne match pas 'apple music' avec
+        // un .contains classique. On normalise tous les whitespaces Unicode
+        // en simple espace pour comparison.
+        let k = rawKind
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+
         let catalogueKinds = [
             // English
             "apple music", "matched", "purchased", "protected",
