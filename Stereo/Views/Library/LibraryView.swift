@@ -18,13 +18,17 @@ struct LibraryView: View {
     @Environment(AppState.self) private var app
     @Environment(LibraryStore.self) private var library
 
-    private var albums: [Album] {
+    private var albumsAndSingles: (albums: [Album], singles: [Track]) {
+        library.tracks.groupedByAlbumAndSingles()
+    }
+
+    private var allAlbums: [Album] {
         library.tracks.groupedByAlbum()
     }
 
     private var currentAlbum: Album? {
         guard let id = app.libraryAlbumDetail else { return nil }
-        return albums.first { $0.id == id }
+        return allAlbums.first { $0.id == id }
     }
 
     var body: some View {
@@ -59,7 +63,10 @@ struct LibraryView: View {
     private var modeContent: some View {
         switch app.libraryViewMode {
         case .albums:
-            AlbumGridView(albums: albums)
+            AlbumsAndSinglesView(
+                albums: albumsAndSingles.albums,
+                singles: albumsAndSingles.singles
+            )
         case .shelf:
             ShelfView(tracks: library.tracks)
         case .list:
@@ -109,7 +116,9 @@ struct LibraryView: View {
         if library.tracks.isEmpty { return "—" }
         switch app.libraryViewMode {
         case .albums:
-            return "\(albums.count) albums · \(library.tracks.count) morceaux · Apple Music"
+            let nbAlbums = albumsAndSingles.albums.count
+            let nbSingles = albumsAndSingles.singles.count
+            return "\(nbAlbums) albums · \(nbSingles) singles · \(library.tracks.count) morceaux"
         case .shelf, .list:
             return "\(library.tracks.count) morceaux · Apple Music"
         }

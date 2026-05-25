@@ -42,7 +42,7 @@ final class ArtworkLoader {
         // Migration : v4 introduit la validation stricte du match (rejet des
         // fausses pochettes pour artistes obscurs). On purge complètement le
         // cache pour invalider les fausses pochettes déjà téléchargées.
-        let currentStrategyVersion = 4
+        let currentStrategyVersion = 5
         let storedVersion = UserDefaults.standard.integer(forKey: "stereo.artwork.strategyVersion")
         if storedVersion < currentStrategyVersion {
             diskCache.clearAll()
@@ -113,7 +113,15 @@ final class ArtworkLoader {
                 }
             }
 
-            // 3. MusicBrainz + Cover Art Archive (artistes pas dans iTunes)
+            // 3. Deezer API publique (excellent pour artistes français/européens)
+            if imageURL == nil {
+                imageURL = await DeezerClient.shared.resolveAlbumArtwork(
+                    album: albumName,
+                    artist: first.artist
+                )
+            }
+
+            // 4. MusicBrainz + Cover Art Archive (artistes très indé / obscurs)
             if imageURL == nil {
                 imageURL = await MusicBrainzClient.shared.resolveAlbumArtwork(
                     album: albumName,

@@ -72,6 +72,33 @@ extension Array where Element == Track {
         }
     }
 
+    /// Sépare les vrais albums (≥ 2 morceaux + nom d'album distinct du titre)
+    /// des singles (1 morceau, album vide, ou album == titre).
+    func groupedByAlbumAndSingles() -> (albums: [Album], singles: [Track]) {
+        let allGroups = groupedByAlbum()
+        var albums: [Album] = []
+        var singles: [Track] = []
+        for group in allGroups {
+            guard let first = group.tracks.first else { continue }
+            let albumNameNonEmpty = !first.album.trimmingCharacters(in: .whitespaces).isEmpty
+            let albumNameDistinct = first.album.localizedCaseInsensitiveCompare(first.title) != .orderedSame
+            let isRealAlbum = group.tracks.count >= 2 && albumNameNonEmpty && albumNameDistinct
+            if isRealAlbum {
+                albums.append(group)
+            } else {
+                singles.append(contentsOf: group.tracks)
+            }
+        }
+        // Singles triés par artiste puis titre
+        singles.sort { lhs, rhs in
+            if lhs.artist != rhs.artist {
+                return lhs.artist.localizedCompare(rhs.artist) == .orderedAscending
+            }
+            return lhs.title.localizedCompare(rhs.title) == .orderedAscending
+        }
+        return (albums, singles)
+    }
+
     /// Extrait l'artiste principal d'une chaîne contenant des featurings.
     /// Exemples :
     ///   « ELIESG & 63KLUF »      → « ELIESG »
