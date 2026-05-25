@@ -14,6 +14,13 @@ struct AnimatedCassette: View {
     var track: Track?
     var isPlaying: Bool
 
+    /// Durée du track en minutes arrondies (pour l'étiquette style "12 MIN")
+    private var durationString: String {
+        guard let secs = track?.duration, secs > 0 else { return "—" }
+        let minutes = Int((secs / 60).rounded())
+        return "\(max(1, minutes))"
+    }
+
     var body: some View {
         GeometryReader { geo in
             let w = geo.size.width
@@ -106,37 +113,60 @@ struct AnimatedCassette: View {
         .aspectRatio(1.6, contentMode: .fit)
     }
 
-    // MARK: — Étiquette papier
+    // MARK: — Étiquette pré-printée style cassette vintage (TDK / Maxell vibe)
 
     private func paperLabel(width w: CGFloat, height h: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(track?.title ?? "—")
-                .font(Theme.scribble(size: w * 0.06))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-            Text(track?.artist ?? "")
-                .font(Theme.typewriter(size: w * 0.028))
-                .tracking(1)
-                .foregroundStyle(Theme.ink.opacity(0.65))
-                .lineLimit(1)
+        let labelHeight = h * 0.22
+        return HStack(spacing: 0) {
+            // Bande de couleur ocre à gauche avec branding "A" (Side A)
+            ZStack {
+                Color(red: 0.74, green: 0.45, blue: 0.18)
+                Text("A")
+                    .font(Theme.typewriter(size: labelHeight * 0.45))
+                    .foregroundStyle(.white)
+                    .fontWeight(.bold)
+            }
+            .frame(width: labelHeight * 0.6)
+
+            // Contenu principal
+            HStack(alignment: .center, spacing: w * 0.015) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("STÉRÉO PERSO")
+                        .font(Theme.typewriter(size: labelHeight * 0.28))
+                        .tracking(1.2)
+                        .foregroundStyle(Theme.ink)
+                        .fontWeight(.semibold)
+                    Text("HIGH BIAS · TYPE II")
+                        .font(Theme.typewriter(size: labelHeight * 0.18))
+                        .tracking(1)
+                        .foregroundStyle(Theme.ink.opacity(0.55))
+                }
+                Spacer(minLength: 0)
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(durationString)
+                        .font(Theme.typewriter(size: labelHeight * 0.40))
+                        .foregroundStyle(Theme.ink)
+                        .contentTransition(.numericText())
+                        .animation(.easeOut(duration: 0.3), value: durationString)
+                    Text("MIN")
+                        .font(Theme.typewriter(size: labelHeight * 0.18))
+                        .tracking(1)
+                        .foregroundStyle(Theme.ink.opacity(0.55))
+                }
+            }
+            .padding(.horizontal, w * 0.02)
         }
-        .padding(.horizontal, w * 0.04)
-        .padding(.vertical, w * 0.018)
-        .frame(maxWidth: w * 0.78, alignment: .leading)
+        .frame(width: w * 0.78, height: labelHeight)
         .background(
-            RoundedRectangle(cornerRadius: 3)
-                .fill(Theme.label)
-                .overlay(
-                    // Petit fading horizontal pour effet papier vieilli
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(
-                            LinearGradient(
-                                colors: [.clear, Color.black.opacity(0.06)],
-                                startPoint: .leading, endPoint: .trailing
-                            )
-                        )
+            ZStack {
+                Theme.label
+                LinearGradient(
+                    colors: [.clear, Color.black.opacity(0.06)],
+                    startPoint: .leading, endPoint: .trailing
                 )
+            }
         )
+        .clipShape(RoundedRectangle(cornerRadius: 3))
         .shadow(color: .black.opacity(0.35), radius: 4, x: 0, y: 2)
     }
 
