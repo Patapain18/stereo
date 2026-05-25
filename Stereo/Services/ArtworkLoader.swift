@@ -39,12 +39,13 @@ final class ArtworkLoader {
     private let diskCache = ArtworkDiskCache()
 
     init() {
-        // Migration : si la stratégie de résolution a changé, on purge les
-        // unresolved pour donner une chance à la nouvelle stratégie.
-        let currentStrategyVersion = 3
+        // Migration : v4 introduit la validation stricte du match (rejet des
+        // fausses pochettes pour artistes obscurs). On purge complètement le
+        // cache pour invalider les fausses pochettes déjà téléchargées.
+        let currentStrategyVersion = 4
         let storedVersion = UserDefaults.standard.integer(forKey: "stereo.artwork.strategyVersion")
         if storedVersion < currentStrategyVersion {
-            diskCache.saveUnresolved([])
+            diskCache.clearAll()
             UserDefaults.standard.set(currentStrategyVersion, forKey: "stereo.artwork.strategyVersion")
             self.unresolved = []
         } else {

@@ -98,10 +98,17 @@ actor ITunesSearch {
         let query = "\(title) \(artist)".trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return nil }
         do {
-            let response = try await call(term: query, limit: 1)
-            guard let first = response.results.first,
-                  let raw = first.artworkUrl100 else { return nil }
-            return Self.upscaleArtwork(raw)
+            let response = try await call(term: query, limit: 3)
+            // Cherche un match valide parmi les premiers résultats
+            for result in response.results {
+                guard let raw = result.artworkUrl100 else { continue }
+                let titleOK = Self.fuzzyMatches(returned: result.trackName ?? "", expected: title)
+                let artistOK = Self.fuzzyMatches(returned: result.artistName ?? "", expected: artist)
+                if titleOK && artistOK {
+                    return Self.upscaleArtwork(raw)
+                }
+            }
+            return nil
         } catch {
             return nil
         }
@@ -146,13 +153,66 @@ actor ITunesSearch {
             }
             struct AlbumItem: Codable {
                 let artworkUrl100: String?
+                let collectionName: String?
+                let artistName: String?
             }
             let parsed = try JSONDecoder().decode(AlbumResponse.self, from: data)
-            guard let raw = parsed.results.first?.artworkUrl100 else { return nil }
+            guard let first = parsed.results.first,
+                  let raw = first.artworkUrl100 else { return nil }
+
+            // Validation stricte : rejette si le résultat ne matche pas vraiment
+            // (évite d'afficher la pochette d'un autre album du même mot-clé).
+            let albumOK = Self.fuzzyMatches(
+                returned: first.collectionName ?? "",
+                expected: trimmedAlbum
+            )
+            let artistOK = Self.fuzzyMatches(
+                returned: first.artistName ?? "",
+                expected: trimmedArtist
+            )
+            guard albumOK && artistOK else {
+                print("🚫 iTunes album match rejeté : « \(first.collectionName ?? "?") » / « \(first.artistName ?? "?") » ≠ « \(trimmedAlbum) » / « \(trimmedArtist) »")
+                return nil
+            }
+
             return Self.upscaleArtwork(raw)
         } catch {
             return nil
         }
+    }
+
+    /// Normalise et compare 2 strings pour détecter un vrai match album/artist.
+    /// Ignore casse, suffixes - Single/EP/Deluxe, features, parens.
+    static func fuzzyMatches(returned: String, expected: String) -> Bool {
+        let normalize: (String) -> String = { s in
+            var result = s.lowercased()
+            // Strip suffixes communs Apple
+            let suffixes = [
+                " - single", " (single)",
+                " - ep", " (ep)",
+                " - deluxe edition", " - deluxe", " (deluxe)",
+                " - remastered", " (remastered)",
+                " - special edition", " - bonus track version",
+                " (live)", " - live"
+            ]
+            for suf in suffixes {
+                if result.hasSuffix(suf) {
+                    result = String(result.dropLast(suf.count))
+                }
+            }
+            // Strip features
+            let featPatterns = [" (feat.", " (ft.", " feat.", " ft.", " featuring", " & "]
+            for pat in featPatterns {
+                if let range = result.range(of: pat) {
+                    result = String(result[..<range.lowerBound])
+                }
+            }
+            return result.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let r = normalize(returned)
+        let e = normalize(expected)
+        if r.isEmpty || e.isEmpty { return false }
+        return r == e || r.contains(e) || e.contains(r)
     }
 
     // MARK: — Helpers
