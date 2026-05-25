@@ -63,12 +63,17 @@ struct NowPlayingView: View {
 
     private func trackMetaPanel(track: Track) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            // — Cassette animée premium (bobines qui tournent + bande qui défile)
-            // Différent de la cassette dans le deck (qui contient la pochette) :
-            // celle-ci montre titre/artiste en grand sur l'étiquette papier.
-            AnimatedCassette(track: track, isPlaying: player.isPlaying)
-                .frame(width: 360, height: 225)
-                .shadow(color: .black.opacity(0.55), radius: 18, x: 0, y: 12)
+            // — Pochette HD comme illustration (la cassette est dans le deck)
+            Group {
+                if let ns = cassetteNS {
+                    AlbumCover(track: track, cornerRadius: 8)
+                        .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                } else {
+                    AlbumCover(track: track, cornerRadius: 8)
+                }
+            }
+            .frame(width: 360, height: 360)
+            .shadow(color: .black.opacity(0.55), radius: 22, x: 0, y: 16)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("~ MAINTENANT ~")
@@ -76,12 +81,12 @@ struct NowPlayingView: View {
                     .tracking(2)
                     .foregroundStyle(Theme.ocre)
                 Text(track.title)
-                    .font(Theme.scribble(size: 48))
+                    .font(Theme.scribble(size: 44))
                     .foregroundStyle(Theme.inkLight)
                     .lineLimit(2)
                     .lineSpacing(-8)
                 Text(track.artist)
-                    .font(Theme.hand(size: 18))
+                    .font(Theme.hand(size: 17))
                     .foregroundStyle(Theme.beige)
                 if !track.album.isEmpty {
                     Text("album · \(track.album)")

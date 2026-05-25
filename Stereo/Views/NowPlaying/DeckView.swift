@@ -93,15 +93,9 @@ struct DeckHiFiView: View {
             let glow = player.isPlaying ? (0.4 + 0.25 * sin(phase * 1.8)) : 0.0
 
             ZStack {
-                Group {
-                    if let ns = cassetteNS {
-                        CassetteThumb(track: track)
-                            .matchedGeometryEffect(id: cassetteMatchID, in: ns)
-                    } else {
-                        CassetteThumb(track: track)
-                    }
-                }
-                .frame(width: 360, height: 225)
+                // Vraie cassette animée (bobines qui tournent) au lieu de la pochette
+                AnimatedCassette(track: track, isPlaying: player.isPlaying)
+                    .frame(width: 360, height: 225)
             }
             .padding(30)
             .background(Color(red: 0.04, green: 0.04, blue: 0.03))
