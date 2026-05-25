@@ -33,12 +33,21 @@ enum Page: String, CaseIterable {
 }
 
 enum LibraryViewMode: String, CaseIterable {
-    case shelf, list
+    case albums, shelf, list
 
     var icon: String {
         switch self {
-        case .shelf: return "square.grid.2x2"
-        case .list: return "list.bullet"
+        case .albums: return "rectangle.stack.fill"
+        case .shelf:  return "square.grid.2x2"
+        case .list:   return "list.bullet"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .albums: return "Albums"
+        case .shelf:  return "Morceaux (grille)"
+        case .list:   return "Morceaux (liste)"
         }
     }
 }
@@ -73,9 +82,12 @@ final class AppState {
     }
     var pageArg: String? = nil  // transitoire, pas persisté
 
-    var libraryViewMode: LibraryViewMode = .shelf {
+    var libraryViewMode: LibraryViewMode = .albums {
         didSet { UserDefaults.standard.set(libraryViewMode.rawValue, forKey: Keys.libraryViewMode) }
     }
+
+    /// ID de l'album affiché en détail dans la bibliothèque. nil = grille.
+    var libraryAlbumDetail: String? = nil
 
     // Sprint 4 polish
     var sidebarVisible: Bool = true {

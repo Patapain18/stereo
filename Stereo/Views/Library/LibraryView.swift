@@ -2,18 +2,46 @@
 //  LibraryView.swift
 //  Stereo · Views/Library/LibraryView.swift
 //
+//  Dispatch sur 4 états :
+//   1. Loading (premier chargement)
+//   2. Empty (rien dans la biblio)
+//   3. Album detail (si app.libraryAlbumDetail est set)
+//   4. Liste/grille selon app.libraryViewMode :
+//       - .albums → AlbumGridView (par défaut, le plus aéré)
+//       - .shelf  → ShelfView (grille de tracks)
+//       - .list   → TrackListView (liste plate)
+//
 
 import SwiftUI
 
 struct LibraryView: View {
     @Environment(AppState.self) private var app
     @Environment(LibraryStore.self) private var library
-    @Environment(Favorites.self) private var favorites
-    @Environment(PlayerState.self) private var player
+
+    private var albums: [Album] {
+        library.tracks.groupedByAlbum()
+    }
+
+    private var currentAlbum: Album? {
+        guard let id = app.libraryAlbumDetail else { return nil }
+        return albums.first { $0.id == id }
+    }
 
     var body: some View {
-        @Bindable var app = app
+        Group {
+            if let album = currentAlbum {
+                AlbumDetailView(album: album)
+            } else {
+                mainContent
+            }
+        }
+        .task {
+            await library.loadIfNeeded()
+        }
+    }
 
+    @ViewBuilder
+    private var mainContent: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
 
@@ -22,15 +50,20 @@ struct LibraryView: View {
             } else if library.tracks.isEmpty {
                 emptyState
             } else {
-                if app.libraryViewMode == .shelf {
-                    ShelfView(tracks: library.tracks)
-                } else {
-                    TrackListView(tracks: library.tracks)
-                }
+                modeContent
             }
         }
-        .task {
-            await library.loadIfNeeded()
+    }
+
+    @ViewBuilder
+    private var modeContent: some View {
+        switch app.libraryViewMode {
+        case .albums:
+            AlbumGridView(albums: albums)
+        case .shelf:
+            ShelfView(tracks: library.tracks)
+        case .list:
+            TrackListView(tracks: library.tracks)
         }
     }
 
@@ -40,35 +73,53 @@ struct LibraryView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Bibliothèque")
                     .font(Theme.serif(size: 28, weight: .semibold))
-                Text("\(library.tracks.count) morceaux · Apple Music")
-                    .font(Theme.mono(size: 11))
+                Text(headerSummary)
+                    .font(Theme.typewriter(size: 11))
                     .foregroundStyle(.secondary)
             }
             Spacer()
 
             Picker("Vue", selection: $app.libraryViewMode) {
                 ForEach(LibraryViewMode.allCases, id: \.self) { mode in
-                    Image(systemName: mode.icon).tag(mode)
+                    Image(systemName: mode.icon)
+                        .tag(mode)
+                        .help(mode.label)
                 }
             }
             .pickerStyle(.segmented)
-            .frame(width: 100)
+            .frame(width: 130)
 
             Button {
                 Task { await library.reload() }
             } label: {
                 Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.inkLight)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().stroke(Theme.borderStrong, lineWidth: 1))
             }
+            .buttonStyle(.pressFeedback)
             .disabled(library.isLoading)
+            .help("Recharger la bibliothèque")
         }
         .padding(24)
+    }
+
+    private var headerSummary: String {
+        if library.tracks.isEmpty { return "—" }
+        switch app.libraryViewMode {
+        case .albums:
+            return "\(albums.count) albums · \(library.tracks.count) morceaux · Apple Music"
+        case .shelf, .list:
+            return "\(library.tracks.count) morceaux · Apple Music"
+        }
     }
 
     private var loadingState: some View {
         VStack(spacing: 12) {
             ProgressView()
             Text("Chargement de ta bibliothèque…")
-                .font(Theme.mono(size: 11))
+                .font(Theme.typewriter(size: 11))
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
