@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # nécessaire pour créer la release et uploader le DMG
+
+jobs:
+  release:
+    name: Build Release + DMG + GitHub Release
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (Release)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Stereo.xcodeproj \
+            -scheme Stereo \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Locate built app
+        id: locate
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -name "Stereo.app" -type d -path "*/Build/Products/Release/*" 2>/dev/null | head -1)
+          if [ -z "$APP" ]; then
+            echo "::error::Stereo.app introuvable après build"
+            exit 1
+          fi
+          echo "app=$APP" >> $GITHUB_OUTPUT
+          du -sh "$APP"
+
+      - name: Package DMG
+        id: dmg
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          STAGING="$RUNNER_TEMP/dmg-staging"
+          rm -rf "$STAGING"
+          mkdir -p "$STAGING"
+          cp -R "${{ steps.locate.outputs.app }}" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          mkdir -p dist
+          DMG="dist/Stereo-${TAG}.dmg"
+          hdiutil create -volname "Stéréo" -srcfolder "$STAGING" -ov -format UDZO "$DMG"
+          ls -la "$DMG"
+          echo "path=$DMG" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.dmg.outputs.tag }}"
+          DMG="${{ steps.dmg.outputs.path }}"
+          # Si la release existe déjà (push du tag déclenche le workflow après création manuelle),
+          # on attache le DMG dessus. Sinon, on la crée.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG existe déjà, upload du DMG en plus"
+            gh release upload "$TAG" "$DMG" --clobber
+          else
+            echo "Création de la release $TAG"
+            gh release create "$TAG" "$DMG" \
+              --title "Stéréo $TAG" \
+              --generate-notes
+          fi
