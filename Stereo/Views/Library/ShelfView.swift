@@ -13,7 +13,7 @@ struct ShelfView: View {
     @Environment(\.playbackRouter) private var router
 
     private let columns = [
-        GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)
+        GridItem(.adaptive(minimum: 160, maximum: 200), spacing: 18)
     ]
 
     var body: some View {
@@ -24,7 +24,7 @@ struct ShelfView: View {
                         if let r = router { r.play(track) } else { library.play(track) }
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
-                            CassetteThumb(track: track)
+                            AlbumCover(track: track)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(track.title)
                                     .font(Theme.serif(size: 13, weight: .medium))

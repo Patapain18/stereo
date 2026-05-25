@@ -18,10 +18,9 @@ struct MiniPlayer: View {
         @Bindable var app = app
 
         HStack(spacing: 14) {
-            // Mini cassette — clic pour ouvrir le now playing immersif
-            // matchedGeometryEffect : la mini cassette grandit fluide vers
-            // celle du NowPlayingView quand on l'ouvre, et revient pareil
-            // quand on ferme.
+            // Pochette pure (sans cassette) — clic pour ouvrir le now playing
+            // immersif. matchedGeometryEffect : la pochette se transforme en
+            // cassette quand on ouvre le deck (effet "déballer la cassette").
             Button {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
                     app.nowPlayingOpen = true
@@ -29,13 +28,13 @@ struct MiniPlayer: View {
             } label: {
                 Group {
                     if let ns = cassetteNS {
-                        CassetteThumb(track: player.current)
+                        AlbumCover(track: player.current, cornerRadius: 4)
                             .matchedGeometryEffect(id: cassetteMatchID, in: ns)
                     } else {
-                        CassetteThumb(track: player.current)
+                        AlbumCover(track: player.current, cornerRadius: 4)
                     }
                 }
-                .frame(width: 80, height: 50)
+                .frame(width: 50, height: 50)
             }
             .buttonStyle(.plain)
             .disabled(player.current == nil)

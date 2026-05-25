@@ -62,8 +62,10 @@ struct RadioPanel: View {
                 }
             }
 
-            CassetteThumb(track: player.current)
-                .frame(maxWidth: 220)
+            // Pochette pure et grande — héros visuel du panneau radio
+            AlbumCover(track: player.current, cornerRadius: 8)
+                .frame(width: 220, height: 220)
+                .padding(.vertical, 4)
 
             readout
 
