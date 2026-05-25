@@ -54,10 +54,19 @@ struct Track: Identifiable, Codable, Equatable, Hashable {
 
     /// True si ce track est un fichier uploadé localement par l'utilisateur
     /// (et non issu du catalogue Apple Music). Heuristique : tout ce qui n'est
-    /// pas explicitement 'Apple Music', 'Matched', 'Purchased' ou 'Protected'.
+    /// pas explicitement un kind "catalogue" connu (EN + FR — Apple Music
+    /// utilise les noms en français sur les Mac configurés en FR).
     var isLocalUpload: Bool {
-        guard let k = kind?.lowercased() else { return false }
-        let catalogueKinds = ["apple music", "matched", "purchased", "protected"]
+        guard let k = kind?.lowercased(), !k.isEmpty else {
+            // kind manquant → on présume catalogue (safe default)
+            return false
+        }
+        let catalogueKinds = [
+            // English
+            "apple music", "matched", "purchased", "protected",
+            // French
+            "musique apple", "correspondant", "acheté", "achete", "protégé", "protege"
+        ]
         return !catalogueKinds.contains { k.contains($0) }
     }
 }
