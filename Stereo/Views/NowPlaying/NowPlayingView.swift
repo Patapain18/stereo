@@ -63,10 +63,12 @@ struct NowPlayingView: View {
 
     private func trackMetaPanel(track: Track) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            // — Grande pochette HD héros (à côté de la cassette du deck)
-            AlbumCover(track: track, cornerRadius: 8)
-                .frame(width: 360, height: 360)
-                .shadow(color: .black.opacity(0.55), radius: 24, x: 0, y: 16)
+            // — Cassette animée premium (bobines qui tournent + bande qui défile)
+            // Différent de la cassette dans le deck (qui contient la pochette) :
+            // celle-ci montre titre/artiste en grand sur l'étiquette papier.
+            AnimatedCassette(track: track, isPlaying: player.isPlaying)
+                .frame(width: 360, height: 225)
+                .shadow(color: .black.opacity(0.55), radius: 18, x: 0, y: 12)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("~ MAINTENANT ~")
