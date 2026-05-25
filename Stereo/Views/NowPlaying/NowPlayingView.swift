@@ -62,29 +62,34 @@ struct NowPlayingView: View {
     }
 
     private func trackMetaPanel(track: Track) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 22) {
+            // — Grande pochette HD héros (à côté de la cassette du deck)
+            AlbumCover(track: track, cornerRadius: 8)
+                .frame(width: 360, height: 360)
+                .shadow(color: .black.opacity(0.55), radius: 24, x: 0, y: 16)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("~ MAINTENANT ~")
                     .font(Theme.typewriter(size: 11))
                     .tracking(2)
                     .foregroundStyle(Theme.ocre)
                 Text(track.title)
-                    .font(Theme.scribble(size: 56))
+                    .font(Theme.scribble(size: 48))
                     .foregroundStyle(Theme.inkLight)
                     .lineLimit(2)
                     .lineSpacing(-8)
                 Text(track.artist)
-                    .font(Theme.hand(size: 20))
+                    .font(Theme.hand(size: 18))
                     .foregroundStyle(Theme.beige)
                 if !track.album.isEmpty {
                     Text("album · \(track.album)")
-                        .font(Theme.hand(size: 14))
+                        .font(Theme.hand(size: 13))
                         .foregroundStyle(Theme.textMute)
                         .italic()
                 }
             }
         }
-        .frame(maxWidth: 360, alignment: .leading)
+        .frame(width: 360, alignment: .leading)
     }
 
     // MARK: — Background

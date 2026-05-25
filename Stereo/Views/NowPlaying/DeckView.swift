@@ -88,40 +88,47 @@ struct DeckHiFiView: View {
     }
 
     private var cassetteFrame: some View {
-        ZStack {
-            Group {
-                if let ns = cassetteNS {
-                    CassetteThumb(track: track)
-                        .matchedGeometryEffect(id: cassetteMatchID, in: ns)
-                } else {
-                    CassetteThumb(track: track)
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !player.isPlaying)) { context in
+            let phase = context.date.timeIntervalSinceReferenceDate
+            let glow = player.isPlaying ? (0.4 + 0.25 * sin(phase * 1.8)) : 0.0
+
+            ZStack {
+                Group {
+                    if let ns = cassetteNS {
+                        CassetteThumb(track: track)
+                            .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                    } else {
+                        CassetteThumb(track: track)
+                    }
                 }
+                .frame(width: 360, height: 225)
             }
-            .frame(width: 360, height: 225)
-        }
-        .padding(30)
-        .background(Color(red: 0.04, green: 0.04, blue: 0.03))
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(
-            RoundedRectangle(cornerRadius: 6).stroke(Color.black, lineWidth: 2)
-        )
-        .overlay(
-            // Reflet diagonal subtil sur le verre du cadre
-            RoundedRectangle(cornerRadius: 6)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.08),
-                            .clear, .clear,
-                            Color.white.opacity(0.04)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+            .padding(30)
+            .background(Color(red: 0.04, green: 0.04, blue: 0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6).stroke(Color.black, lineWidth: 2)
+            )
+            .overlay(
+                // Reflet diagonal subtil sur le verre du cadre
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(0.08),
+                                .clear, .clear,
+                                Color.white.opacity(0.04)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
-                .allowsHitTesting(false)
-        )
-        .shadow(color: .black.opacity(0.85), radius: 30, x: 0, y: 0)
+                    .allowsHitTesting(false)
+            )
+            // Halo ocre qui respire autour du cadre quand on joue
+            .shadow(color: Theme.ocre.opacity(glow * 0.6), radius: 24 + glow * 14)
+            .shadow(color: .black.opacity(0.85), radius: 30, x: 0, y: 0)
+        }
     }
 
     private var indicators: some View {
@@ -146,11 +153,25 @@ struct DeckHiFiView: View {
             Text(value)
                 .font(Theme.typewriter(size: 12))
                 .foregroundStyle(color)
+                .contentTransition(.numericText(countsDown: false))
+                .animation(.linear(duration: 0.25), value: value)
+                .monospacedDigit()
+                .shadow(color: color.opacity(0.5), radius: 2)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 5)
         .padding(.horizontal, 8)
-        .background(Color(red: 0.04, green: 0.04, blue: 0.03))
+        .background(
+            // Petite lueur ocre subtile en background pour effet "écran LED"
+            ZStack {
+                Color(red: 0.04, green: 0.04, blue: 0.03)
+                RadialGradient(
+                    colors: [color.opacity(0.10), .clear],
+                    center: .center,
+                    startRadius: 0, endRadius: 24
+                )
+            }
+        )
         .clipShape(RoundedRectangle(cornerRadius: 3))
         .overlay(
             RoundedRectangle(cornerRadius: 3).stroke(Theme.ink, lineWidth: 1)
