@@ -93,6 +93,49 @@ final class MusicLibrary {
         _ = NSAppleScript(source: script)?.executeAndReturnError(nil)
     }
 
+    /// Charge les morceaux d'une playlist utilisateur par son persistent ID
+    func loadTracks(forPlaylistID playlistID: String) async -> [Track] {
+        let script = """
+        set output to ""
+        tell application id "com.apple.Music"
+            try
+                set thePL to (some user playlist whose persistent ID is "\(playlistID)")
+                set theTracks to tracks of thePL
+                repeat with t in theTracks
+                    set pid to ""
+                    try
+                        set pid to persistent ID of t
+                    end try
+                    set output to output & pid & "\\t" & ¬
+                        (name of t) & "\\t" & ¬
+                        (artist of t) & "\\t" & ¬
+                        (album of t) & "\\t" & ¬
+                        (duration of t as text) & "\\n"
+                end repeat
+            end try
+        end tell
+        return output
+        """
+
+        return await Task.detached {
+            guard let raw = await Self.runScript(script) else { return [] }
+            return Self.parse(raw)
+        }.value
+    }
+
+    /// Lance la lecture d'une playlist entière (premier track + queue auto)
+    func playPlaylist(id: String) {
+        let script = """
+        tell application id "com.apple.Music"
+            try
+                set thePL to (some user playlist whose persistent ID is "\(id)")
+                play thePL
+            end try
+        end tell
+        """
+        _ = NSAppleScript(source: script)?.executeAndReturnError(nil)
+    }
+
     // MARK: — Helpers
 
     nonisolated private static func runScript(_ source: String) -> String? {
