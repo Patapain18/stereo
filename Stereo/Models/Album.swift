@@ -34,15 +34,18 @@ struct Album: Identifiable, Hashable {
 }
 
 extension Array where Element == Track {
-    /// Groupe les tracks par (artiste, album). Albums triés par artiste, puis nom.
-    /// Tracks dans un album conservent leur ordre d'origine.
+    /// Groupe les tracks par (artiste principal, album). Les tracks d'un même
+    /// album avec différents featurings (ex: « ELIESG & 63KLUF », « ELIESG &
+    /// Bedry ») sont fusionnés sous un seul Album d'« ELIESG ».
+    /// Albums triés par artiste, puis nom. Tracks conservent leur ordre.
     func groupedByAlbum() -> [Album] {
-        // Préserve l'ordre d'apparition de chaque (artiste|album) dans la liste
         var keysOrder: [String] = []
         var groups: [String: [Track]] = [:]
 
         for track in self {
-            let key = "\(track.artist)||\(track.album.isEmpty ? track.title : track.album)"
+            let primaryArtist = Self.primaryArtist(from: track.artist)
+            let albumName = track.album.isEmpty ? track.title : track.album
+            let key = "\(primaryArtist.lowercased())||\(albumName.lowercased())"
             if groups[key] == nil {
                 keysOrder.append(key)
                 groups[key] = []
@@ -52,10 +55,11 @@ extension Array where Element == Track {
 
         let albums = keysOrder.compactMap { key -> Album? in
             guard let tracks = groups[key], let first = tracks.first else { return nil }
+            let primaryArtist = Self.primaryArtist(from: first.artist)
             return Album(
                 id: key,
                 name: first.album.isEmpty ? first.title : first.album,
-                artist: first.artist,
+                artist: primaryArtist,
                 tracks: tracks
             )
         }
@@ -66,5 +70,29 @@ extension Array where Element == Track {
             }
             return lhs.name.localizedCompare(rhs.name) == .orderedAscending
         }
+    }
+
+    /// Extrait l'artiste principal d'une chaîne contenant des featurings.
+    /// Exemples :
+    ///   « ELIESG & 63KLUF »      → « ELIESG »
+    ///   « Drake feat. Future »   → « Drake »
+    ///   « Adele (feat. Beyoncé) »→ « Adele »
+    ///   « Daft Punk »            → « Daft Punk »
+    private static func primaryArtist(from artistString: String) -> String {
+        let separators = [
+            " & ",
+            " feat. ", " feat ", " (feat",
+            " ft. ", " ft ",
+            " featuring ",
+            " avec ", " vs. ", " vs ",
+            ", "
+        ]
+        var name = artistString
+        for sep in separators {
+            if let range = name.range(of: sep, options: [.caseInsensitive]) {
+                name = String(name[..<range.lowerBound])
+            }
+        }
+        return name.trimmingCharacters(in: .whitespaces)
     }
 }
