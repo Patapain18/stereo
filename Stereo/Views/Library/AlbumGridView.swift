@@ -42,7 +42,7 @@ private struct AlbumCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: 8) {
-                AlbumCover(track: album.coverTrack)
+                AlbumCoverArt(album: album)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(album.name)
                         .font(Theme.serif(size: 14, weight: .medium))

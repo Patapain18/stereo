@@ -48,6 +48,31 @@ final class ArtworkLoader {
         cache[trackID]
     }
 
+    /// Renvoie la première image en cache parmi une liste de tracks.
+    /// Utile pour AlbumCard qui veut afficher la pochette de n'importe quel
+    /// track de l'album.
+    func firstImage(amongTracks tracks: [Track]) -> NSImage? {
+        for t in tracks {
+            if let img = cache[t.id] { return img }
+        }
+        return nil
+    }
+
+    /// S'assure qu'au moins une pochette est résolue pour l'album. Tente
+    /// l'un après l'autre les tracks tant qu'il n'y a pas d'image cached
+    /// et que tous ne sont pas marqués unresolved.
+    func ensureAlbumLoaded(tracks: [Track]) {
+        // Déjà une image en cache → rien à faire
+        if firstImage(amongTracks: tracks) != nil { return }
+        // Lance le fetch du premier track non encore tenté
+        for t in tracks {
+            if cache[t.id] == nil, !unresolved.contains(t.id), !inFlight.contains(t.id) {
+                ensureLoaded(for: t)
+                return  // un seul à la fois pour ne pas spammer iTunes Search
+            }
+        }
+    }
+
     /// Lance le chargement si pas déjà fait. À appeler dans `.onAppear` des vues qui
     /// affichent une cassette.
     func ensureLoaded(for track: Track) {

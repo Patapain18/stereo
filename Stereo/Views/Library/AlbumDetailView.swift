@@ -45,8 +45,8 @@ struct AlbumDetailView: View {
             .help("Retour à la bibliothèque")
             .padding(.top, 4)
 
-            // Grande pochette de l'album
-            AlbumCover(track: album.coverTrack)
+            // Grande pochette de l'album (cherche dans tous les tracks de l'album)
+            AlbumCoverArt(album: album, cornerRadius: 10)
                 .frame(width: 200, height: 200)
                 .shadow(color: .black.opacity(0.45), radius: 16, x: 0, y: 10)
 
