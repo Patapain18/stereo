@@ -69,7 +69,10 @@ final class SoundCloudController: NSObject {
 
         // Attache le webview à une fenêtre offscreen pour que macOS ne suspende
         // pas son JS / sa lecture audio. Sans ça, le widget se bloque silencieusement.
-        let window = NSWindow(
+        //
+        // ⚠️ La fenêtre DOIT refuser d'être key/main window, sinon elle vole le
+        // focus de la vraie fenêtre Stéréo (la fenêtre principale apparaît noire).
+        let window = HiddenAudioWindow(
             contentRect: NSRect(x: -10000, y: -10000, width: 320, height: 200),
             styleMask: [.borderless],
             backing: .buffered,
@@ -281,6 +284,16 @@ final class SoundCloudController: NSObject {
         s.replacingOccurrences(of: "\\", with: "\\\\")
          .replacingOccurrences(of: "'", with: "\\'")
     }
+}
+
+// MARK: — Fenêtre offscreen qui ne vole jamais le focus
+
+/// NSWindow custom qui refuse explicitement d'être key/main window.
+/// Sans ça, la fenêtre hors écran qui héberge le webview SoundCloud capture
+/// le focus de la vraie fenêtre Stéréo (qui devient noire).
+private final class HiddenAudioWindow: NSWindow {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
 }
 
 // MARK: — Message relay (évite cycle de rétention avec WKScriptMessageHandler)
