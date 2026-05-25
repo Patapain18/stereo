@@ -56,17 +56,69 @@ enum DeckStyle: String, CaseIterable {
 }
 
 @Observable
+@MainActor
 final class AppState {
-    var isNightMode: Bool = true
-    var isScrubbing: Bool = false
+    // MARK: — État UI persisté entre les lancements
+    //
+    // Les didSet écrivent dans UserDefaults. À l'init on relit ce qui était
+    // sauvegardé. Ainsi Mathis retrouve son setup au prochain démarrage.
 
-    var page: Page = .library
-    var pageArg: String? = nil          // playlist ID si page == .playlists
-    var libraryViewMode: LibraryViewMode = .shelf
+    var isNightMode: Bool = true {
+        didSet { UserDefaults.standard.set(isNightMode, forKey: Keys.isNightMode) }
+    }
+    var isScrubbing: Bool = false  // état transitoire, pas persisté
+
+    var page: Page = .library {
+        didSet { UserDefaults.standard.set(page.rawValue, forKey: Keys.page) }
+    }
+    var pageArg: String? = nil  // transitoire, pas persisté
+
+    var libraryViewMode: LibraryViewMode = .shelf {
+        didSet { UserDefaults.standard.set(libraryViewMode.rawValue, forKey: Keys.libraryViewMode) }
+    }
 
     // Sprint 4 polish
-    var radioVisible: Bool = true       // panneau radio à droite
-    var showDust: Bool = true           // particules de poussière en background
-    var nowPlayingOpen: Bool = false    // overlay vue plein écran
-    var deckStyle: DeckStyle = .walkman // style du now playing
+    var radioVisible: Bool = true {
+        didSet { UserDefaults.standard.set(radioVisible, forKey: Keys.radioVisible) }
+    }
+    var showDust: Bool = true {
+        didSet { UserDefaults.standard.set(showDust, forKey: Keys.showDust) }
+    }
+    var nowPlayingOpen: Bool = false  // transitoire
+    var deckStyle: DeckStyle = .walkman {
+        didSet { UserDefaults.standard.set(deckStyle.rawValue, forKey: Keys.deckStyle) }
+    }
+
+    // MARK: — Init avec restoration
+
+    init() {
+        let d = UserDefaults.standard
+        if d.object(forKey: Keys.isNightMode) != nil {
+            isNightMode = d.bool(forKey: Keys.isNightMode)
+        }
+        if d.object(forKey: Keys.radioVisible) != nil {
+            radioVisible = d.bool(forKey: Keys.radioVisible)
+        }
+        if d.object(forKey: Keys.showDust) != nil {
+            showDust = d.bool(forKey: Keys.showDust)
+        }
+        if let raw = d.string(forKey: Keys.page), let p = Page(rawValue: raw) {
+            page = p
+        }
+        if let raw = d.string(forKey: Keys.libraryViewMode), let m = LibraryViewMode(rawValue: raw) {
+            libraryViewMode = m
+        }
+        if let raw = d.string(forKey: Keys.deckStyle), let s = DeckStyle(rawValue: raw) {
+            deckStyle = s
+        }
+    }
+
+    private enum Keys {
+        static let isNightMode = "stereo.app.isNightMode"
+        static let radioVisible = "stereo.app.radioVisible"
+        static let showDust = "stereo.app.showDust"
+        static let page = "stereo.app.page"
+        static let libraryViewMode = "stereo.app.libraryViewMode"
+        static let deckStyle = "stereo.app.deckStyle"
+    }
 }

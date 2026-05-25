@@ -57,6 +57,77 @@ struct StereoApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1100, height: 700)
+        .commands { keyboardCommands }
+    }
+
+    // MARK: — Raccourcis clavier (menu bar macOS)
+
+    @CommandsBuilder
+    private var keyboardCommands: some Commands {
+        CommandMenu("Lecture") {
+            Button("Play / Pause") {
+                router?.togglePlay()
+            }
+            .keyboardShortcut(.space, modifiers: [.command, .shift])
+
+            Button("Suivant") {
+                router?.nextTrack()
+            }
+            .keyboardShortcut(.rightArrow, modifiers: .command)
+
+            Button("Précédent") {
+                router?.previousTrack()
+            }
+            .keyboardShortcut(.leftArrow, modifiers: .command)
+
+            Divider()
+
+            Button("Ouvrir le deck") {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+                    app.nowPlayingOpen = true
+                }
+            }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(app.nowPlayingOpen)
+        }
+
+        CommandMenu("Vue") {
+            Button("Bibliothèque") { goToPage(.library) }
+                .keyboardShortcut("1", modifiers: .command)
+            Button("Fichiers locaux") { goToPage(.local) }
+                .keyboardShortcut("2", modifiers: .command)
+            Button("Playlists") { goToPage(.playlists) }
+                .keyboardShortcut("3", modifiers: .command)
+            Button("Favoris") { goToPage(.favorites) }
+                .keyboardShortcut("4", modifiers: .command)
+            Button("Rechercher") { goToPage(.search) }
+                .keyboardShortcut("5", modifiers: .command)
+            Button("SoundCloud") { goToPage(.soundcloud) }
+                .keyboardShortcut("6", modifiers: .command)
+
+            Divider()
+
+            Button(app.isNightMode ? "Mode jour" : "Mode nuit") {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    app.isNightMode.toggle()
+                }
+            }
+            .keyboardShortcut("t", modifiers: .command)
+
+            Button(app.radioVisible ? "Masquer la stéréo" : "Afficher la stéréo") {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    app.radioVisible.toggle()
+                }
+            }
+            .keyboardShortcut("r", modifiers: [.command, .shift])
+        }
+    }
+
+    private func goToPage(_ page: Page) {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            app.page = page
+            app.pageArg = nil
+        }
     }
 }
 
