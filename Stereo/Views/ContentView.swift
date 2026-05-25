@@ -60,8 +60,19 @@ struct ContentView: View {
                 HStack(spacing: 0) {
                     // Colonne principale : page courante + mini-player
                     VStack(spacing: 0) {
-                        pageContent
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        ZStack {
+                            pageContent
+                                .id("\(app.page.rawValue)-\(app.pageArg ?? "")")
+                                .transition(
+                                    .asymmetric(
+                                        insertion: .opacity.combined(with: .scale(scale: 0.985)),
+                                        removal: .opacity
+                                    )
+                                )
+                        }
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.page)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: app.pageArg)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                         MiniPlayer()
                     }

@@ -240,7 +240,7 @@ struct DeckHiFiView: View {
                     .shadow(color: Theme.ocre.opacity(glow * 0.7), radius: 10 + glow * 8)
                     .shadow(color: Theme.ocre.opacity(glow * 0.4), radius: 18 + glow * 12)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressFeedback)
         }
     }
 
@@ -257,6 +257,6 @@ struct DeckHiFiView: View {
                         .stroke(primary ? Theme.ink : Theme.borderStrong, lineWidth: 1)
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressFeedback)
     }
 }

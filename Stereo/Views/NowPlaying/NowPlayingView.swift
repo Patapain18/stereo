@@ -19,24 +19,38 @@ struct NowPlayingView: View {
 
     var onClose: () -> Void
 
+    /// Pilote la cascade d'entrée — passe à true ~50ms après onAppear pour laisser
+    /// le matchedGeometry s'installer, puis chaque élément s'anime avec son delay.
+    @State private var appeared: Bool = false
+
     var body: some View {
         @Bindable var app = app
 
         ZStack {
-            // — Background : pochette HD floue fullscreen + halos colorés
             backgroundLayer
 
-            // — Particules de poussière
             DustParticles(count: 36, color: Theme.ocre.opacity(0.7))
+                .opacity(appeared ? 1 : 0)
+                .animation(.easeOut(duration: 0.6).delay(0.2), value: appeared)
 
-            // — Contenu
             VStack(spacing: 0) {
                 topBar
+                    .opacity(appeared ? 1 : 0)
+                    .offset(y: appeared ? 0 : -10)
+                    .animation(.spring(response: 0.55, dampingFraction: 0.85).delay(0.05), value: appeared)
+
                 Spacer()
                 if let track = player.current {
                     HStack(alignment: .center, spacing: 50) {
                         trackMetaPanel(track: track)
+                            .opacity(appeared ? 1 : 0)
+                            .offset(x: appeared ? 0 : -30)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.78).delay(0.08), value: appeared)
+
                         DeckHiFiView(track: track)
+                            .opacity(appeared ? 1 : 0)
+                            .offset(x: appeared ? 0 : 30)
+                            .animation(.spring(response: 0.6, dampingFraction: 0.78).delay(0.15), value: appeared)
                     }
                     .padding(.horizontal, 40)
                 } else {
@@ -45,7 +59,6 @@ struct NowPlayingView: View {
                 Spacer()
             }
 
-            // — Easter egg : crayon en bas à droite (rembobine 10s)
             if app.showDust, player.current != nil {
                 PencilEasterEgg(onUse: {
                     let newPos = max(0, player.position - 10)
@@ -54,11 +67,19 @@ struct NowPlayingView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
                 .padding(.bottom, 28)
                 .padding(.trailing, 28)
+                .opacity(appeared ? 1 : 0)
+                .animation(.easeOut(duration: 0.5).delay(0.4), value: appeared)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.night)
-        .transition(.opacity.combined(with: .scale(scale: 1.02)))
+        .transition(.opacity)
+        .onAppear {
+            // Laisse matchedGeometry s'installer, puis lance la cascade
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) {
+                appeared = true
+            }
+        }
     }
 
     private func trackMetaPanel(track: Track) -> some View {
