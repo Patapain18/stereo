@@ -11,6 +11,10 @@ import SwiftUI
 struct ContentView: View {
     @Environment(AppState.self) private var app
 
+    /// Namespace partagé pour les transitions matchedGeometryEffect entre
+    /// la mini cassette du MiniPlayer et la grande cassette du NowPlayingView.
+    @Namespace private var cassetteNamespace
+
     var body: some View {
         @Bindable var app = app
 
@@ -19,7 +23,7 @@ struct ContentView: View {
 
             if app.nowPlayingOpen {
                 NowPlayingView(onClose: {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                         app.nowPlayingOpen = false
                     }
                 })
@@ -27,6 +31,7 @@ struct ContentView: View {
                 .zIndex(10)
             }
         }
+        .environment(\.cassetteNamespace, cassetteNamespace)
     }
 
     private var mainShell: some View {
@@ -114,6 +119,12 @@ private struct MusicWatcherKey: EnvironmentKey {
     static let defaultValue: MusicWatcher? = nil
 }
 
+/// Namespace partagé pour matchedGeometryEffect entre MiniPlayer et NowPlayingView.
+/// `nil` quand on n'est pas dans la hierarchie ContentView (cas Preview).
+private struct CassetteNamespaceKey: EnvironmentKey {
+    static let defaultValue: Namespace.ID? = nil
+}
+
 extension EnvironmentValues {
     var musicController: MusicController {
         get { self[MusicControllerKey.self] }
@@ -124,4 +135,13 @@ extension EnvironmentValues {
         get { self[MusicWatcherKey.self] }
         set { self[MusicWatcherKey.self] = newValue }
     }
+
+    var cassetteNamespace: Namespace.ID? {
+        get { self[CassetteNamespaceKey.self] }
+        set { self[CassetteNamespaceKey.self] = newValue }
+    }
 }
+
+/// ID stable utilisé par matchedGeometryEffect pour la cassette en cours.
+/// Une seule cassette à la fois peut "matcher" — c'est toujours `player.current`.
+let cassetteMatchID = "currentTrackCassette"

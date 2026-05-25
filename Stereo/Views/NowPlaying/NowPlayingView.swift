@@ -15,6 +15,7 @@ struct NowPlayingView: View {
     @Environment(AppState.self) private var app
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
+    @Environment(\.cassetteNamespace) private var cassetteNS
 
     var onClose: () -> Void
 
@@ -231,10 +232,18 @@ struct NowPlayingView: View {
                     startPoint: .top, endPoint: .bottom
                 )
 
-                // Cassette
-                CassetteThumb(track: track)
-                    .frame(width: 280, height: 175)
-                    .padding(.bottom, 24)
+                // Cassette — matchedGeometryEffect pour la transition fluide
+                // depuis/vers la mini cassette du MiniPlayer
+                Group {
+                    if let ns = cassetteNS {
+                        CassetteThumb(track: track)
+                            .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                    } else {
+                        CassetteThumb(track: track)
+                    }
+                }
+                .frame(width: 280, height: 175)
+                .padding(.bottom, 24)
 
                 // Glass reflection
                 LinearGradient(

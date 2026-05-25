@@ -12,6 +12,7 @@ struct BoomboxNPView: View {
     var track: Track
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
+    @Environment(\.cassetteNamespace) private var cassetteNS
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,8 +130,15 @@ struct BoomboxNPView: View {
                              Color(red: 0.95, green: 0.93, blue: 0.86).opacity(0.05)],
                     startPoint: .top, endPoint: .bottom
                 )
-                CassetteThumb(track: track)
-                    .frame(maxWidth: 240)
+                Group {
+                    if let ns = cassetteNS {
+                        CassetteThumb(track: track)
+                            .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                    } else {
+                        CassetteThumb(track: track)
+                    }
+                }
+                .frame(maxWidth: 240)
                 LinearGradient(
                     colors: [Color.white.opacity(0.18), .clear, .clear,
                              Color.white.opacity(0.06)],

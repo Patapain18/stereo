@@ -11,19 +11,30 @@ struct MiniPlayer: View {
     @Environment(AppState.self) private var app
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
+    @Environment(\.cassetteNamespace) private var cassetteNS
 
     var body: some View {
         @Bindable var app = app
 
         HStack(spacing: 14) {
             // Mini cassette — clic pour ouvrir le now playing immersif
+            // matchedGeometryEffect : la mini cassette grandit fluide vers
+            // celle du NowPlayingView quand on l'ouvre, et revient pareil
+            // quand on ferme.
             Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
                     app.nowPlayingOpen = true
                 }
             } label: {
-                CassetteThumb(track: player.current)
-                    .frame(width: 80, height: 50)
+                Group {
+                    if let ns = cassetteNS {
+                        CassetteThumb(track: player.current)
+                            .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                    } else {
+                        CassetteThumb(track: player.current)
+                    }
+                }
+                .frame(width: 80, height: 50)
             }
             .buttonStyle(.plain)
             .disabled(player.current == nil)
@@ -65,7 +76,7 @@ struct MiniPlayer: View {
                 }
 
                 Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
                         app.nowPlayingOpen = true
                     }
                 } label: {

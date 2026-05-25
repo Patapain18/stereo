@@ -13,6 +13,7 @@ struct DeckHiFiView: View {
     var track: Track
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
+    @Environment(\.cassetteNamespace) private var cassetteNS
 
     var body: some View {
         VStack(spacing: 0) {
@@ -60,8 +61,15 @@ struct DeckHiFiView: View {
 
     private var cassetteFrame: some View {
         ZStack {
-            CassetteThumb(track: track)
-                .frame(width: 360, height: 225)
+            Group {
+                if let ns = cassetteNS {
+                    CassetteThumb(track: track)
+                        .matchedGeometryEffect(id: cassetteMatchID, in: ns)
+                } else {
+                    CassetteThumb(track: track)
+                }
+            }
+            .frame(width: 360, height: 225)
         }
         .padding(30)
         .background(Color(red: 0.04, green: 0.04, blue: 0.03))
