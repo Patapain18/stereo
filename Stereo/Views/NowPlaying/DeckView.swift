@@ -2,9 +2,9 @@
 //  DeckView.swift
 //  Stereo · Views/NowPlaying/DeckView.swift
 //
-//  Style "hi-fi" du NowPlaying — un deck rectangulaire avec cassette dans un
-//  cadre noir profond, 3 boîtes d'indicateurs (speed/counter/type), waveform
-//  et 5 boutons transport.
+//  Style "hi-fi" du NowPlaying — un deck rectangulaire en brushed metal avec
+//  cassette dans un cadre noir profond, indicateurs (speed/counter/type),
+//  waveform, VU mètre stéréo, transport et glow sur le play actif.
 //
 
 import SwiftUI
@@ -21,22 +21,40 @@ struct DeckHiFiView: View {
             cassetteFrame
             indicators
             waveformBlock
+            stereoVU
             transport
         }
         .padding(30)
         .frame(width: 600)
         .background(
-            LinearGradient(
-                colors: [Color(red: 0.29, green: 0.25, blue: 0.17),
-                         Color(red: 0.17, green: 0.13, blue: 0.09)],
-                startPoint: .top, endPoint: .bottom
-            )
+            BrushedMetalBackground()
         )
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10).stroke(Theme.ink, lineWidth: 2)
         )
+        .overlay(
+            // Vis dans les 4 coins pour le look industriel
+            ZStack {
+                screw.position(x: 14, y: 14)
+                screw.position(x: 586, y: 14)
+                screw.position(x: 14, y: 586)
+                screw.position(x: 586, y: 586)
+            }
+            .allowsHitTesting(false)
+        )
         .shadow(color: .black.opacity(0.6), radius: 25, x: 0, y: 24)
+    }
+
+    private var screw: some View {
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.10, green: 0.08, blue: 0.06))
+                .frame(width: 8, height: 8)
+            Rectangle()
+                .fill(Color.black.opacity(0.7))
+                .frame(width: 5, height: 1)
+        }
     }
 
     private var header: some View {
@@ -47,16 +65,26 @@ struct DeckHiFiView: View {
                 .foregroundStyle(Theme.ocre)
             Spacer()
             HStack(spacing: 6) {
-                Circle()
-                    .fill(player.isPlaying ? Theme.copperRed : Color(red: 0.35, green: 0.29, blue: 0.20))
-                    .frame(width: 8, height: 8)
-                    .shadow(color: player.isPlaying ? Theme.copperRed.opacity(0.7) : .clear, radius: 4)
+                breathingLED(color: Theme.copperRed, active: player.isPlaying)
                 Circle()
                     .fill(player.isPlaying ? Theme.oliveGreen : Color(red: 0.35, green: 0.29, blue: 0.20))
                     .frame(width: 8, height: 8)
             }
         }
         .padding(.bottom, 14)
+    }
+
+    /// LED qui "respire" (opacity oscille) quand active.
+    private func breathingLED(color: Color, active: Bool) -> some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !active)) { context in
+            let phase = context.date.timeIntervalSinceReferenceDate
+            let breathe = active ? (0.65 + 0.35 * sin(phase * 2.5)) : 0.20
+            Circle()
+                .fill(active ? color : Color(red: 0.35, green: 0.29, blue: 0.20))
+                .frame(width: 8, height: 8)
+                .shadow(color: color.opacity(active ? breathe * 0.9 : 0), radius: active ? 6 : 0)
+                .opacity(active ? 0.6 + 0.4 * breathe : 1)
+        }
     }
 
     private var cassetteFrame: some View {
@@ -76,6 +104,22 @@ struct DeckHiFiView: View {
         .clipShape(RoundedRectangle(cornerRadius: 6))
         .overlay(
             RoundedRectangle(cornerRadius: 6).stroke(Color.black, lineWidth: 2)
+        )
+        .overlay(
+            // Reflet diagonal subtil sur le verre du cadre
+            RoundedRectangle(cornerRadius: 6)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.08),
+                            .clear, .clear,
+                            Color.white.opacity(0.04)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .allowsHitTesting(false)
         )
         .shadow(color: .black.opacity(0.85), radius: 30, x: 0, y: 0)
     }
@@ -138,21 +182,51 @@ struct DeckHiFiView: View {
         return PlayerState.format(seconds: remaining)
     }
 
+    private var stereoVU: some View {
+        VUMeterStereo(playing: player.isPlaying, progress: player.progress)
+            .frame(height: 60)
+            .padding(.top, 14)
+            .padding(.horizontal, 80)
+    }
+
     private var transport: some View {
         HStack(spacing: 8) {
             deckButton("⏮", w: 44, primary: false) { controller.previousTrack() }
             deckButton("◂◂", w: 44, primary: false) {
                 controller.seek(to: max(0, player.position - track.duration * 0.05))
             }
-            deckButton(player.isPlaying ? "⏸" : "▶", w: 60, primary: true) {
-                controller.togglePlay()
-            }
+            primaryPlayButton
             deckButton("▸▸", w: 44, primary: false) {
                 controller.seek(to: min(track.duration, player.position + track.duration * 0.05))
             }
             deckButton("⏭", w: 44, primary: false) { controller.nextTrack() }
         }
         .padding(.top, 14)
+    }
+
+    /// Bouton play/pause central avec glow pulsant quand actif.
+    private var primaryPlayButton: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0, paused: !player.isPlaying)) { context in
+            let phase = context.date.timeIntervalSinceReferenceDate
+            let glow = player.isPlaying ? (0.5 + 0.4 * sin(phase * 2.5)) : 0.0
+            Button {
+                controller.togglePlay()
+            } label: {
+                Text(player.isPlaying ? "⏸" : "▶")
+                    .font(.system(size: 18))
+                    .foregroundStyle(Theme.ink)
+                    .frame(width: 60, height: 38)
+                    .background(Theme.ocre)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Theme.ink, lineWidth: 1)
+                    )
+                    .shadow(color: Theme.ocre.opacity(glow * 0.7), radius: 10 + glow * 8)
+                    .shadow(color: Theme.ocre.opacity(glow * 0.4), radius: 18 + glow * 12)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func deckButton(_ glyph: String, w: CGFloat, primary: Bool, action: @escaping () -> Void) -> some View {
