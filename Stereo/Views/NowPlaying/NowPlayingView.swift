@@ -408,6 +408,7 @@ struct NowPlayingView: View {
         case .appleMusic: return "AM"
         case .soundcloud: return "SC"
         case .iTunesSearch: return "ITUNES"
+        case .localFile: return "LOCAL"
         }
     }
 }

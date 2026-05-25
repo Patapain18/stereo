@@ -38,7 +38,9 @@ final class SoundCloudController: NSObject {
     // MARK: — Internals
 
     private var webView: WKWebView!
+    private var hostWindow: NSWindow?
     private var pendingTrack: Track? = nil
+    private var pendingPlay: Bool = false
 
     /// Closures externes (le PlaybackRouter s'inscrit dessus pour propager dans PlayerState)
     var onTrackChanged: ((Track?) -> Void)?
@@ -59,13 +61,30 @@ final class SoundCloudController: NSObject {
         userContent.add(MessageRelay(controller: self), name: "scBridge")
         config.userContentController = userContent
 
-        // Autoplay : il faut le permettre sinon le widget se bloquera
-        config.preferences.setValue(true, forKey: "allowsPictureInPictureMediaPlayback")
-        let mediaTypes: WKAudiovisualMediaTypes = []
-        config.mediaTypesRequiringUserActionForPlayback = mediaTypes
+        // Autoplay audio sans gesture utilisateur
+        config.mediaTypesRequiringUserActionForPlayback = []
+        config.preferences.javaScriptCanOpenWindowsAutomatically = false
 
         webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 320, height: 200), configuration: config)
+
+        // Attache le webview à une fenêtre offscreen pour que macOS ne suspende
+        // pas son JS / sa lecture audio. Sans ça, le widget se bloque silencieusement.
+        let window = NSWindow(
+            contentRect: NSRect(x: -10000, y: -10000, width: 320, height: 200),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.isOpaque = false
+        window.backgroundColor = .clear
+        window.hasShadow = false
+        window.ignoresMouseEvents = true
+        window.contentView = webView
+        window.orderFrontRegardless()
+        self.hostWindow = window
+
         webView.loadHTMLString(htmlContent, baseURL: URL(string: "https://w.soundcloud.com")!)
+        print("🎵 SC: WebView setup, hostWindow shown offscreen")
     }
 
     private var htmlContent: String {
@@ -140,14 +159,18 @@ final class SoundCloudController: NSObject {
     // MARK: — Commandes publiques
 
     func load(_ track: Track) {
-        guard track.source == .soundcloud, let url = track.externalURL else { return }
+        guard track.source == .soundcloud, let url = track.externalURL else {
+            print("⚠️ SC load: track invalide (source=\(track.source) externalURL=\(String(describing: track.externalURL)))")
+            return
+        }
         currentTrack = track
         onTrackChanged?(track)
 
         if isReady {
+            print("🎵 SC: scLoad('\(url.absoluteString)')")
             evaluate("scLoad('\(escape(url.absoluteString))')")
         } else {
-            // Bufferise et lance dès que la page hôte est prête
+            print("🎵 SC: pas encore ready, bufferise le track")
             pendingTrack = track
         }
     }
@@ -177,6 +200,7 @@ final class SoundCloudController: NSObject {
         switch name {
         case "host_ready":
             isReady = true
+            print("🎵 SC: host page ready")
             // Si un track a été demandé avant ready, on le charge maintenant
             if let pending = pendingTrack {
                 pendingTrack = nil
@@ -184,6 +208,7 @@ final class SoundCloudController: NSObject {
             }
 
         case "ready":
+            print("🎵 SC: widget ready for track — title=\(payload["title"] ?? "?")")
             // Mise à jour des métadonnées avec ce que retourne SoundCloud
             // (souvent plus précis que oEmbed)
             if var track = currentTrack {
@@ -198,20 +223,27 @@ final class SoundCloudController: NSObject {
                     duration = dur
                 }
                 if let artwork = payload["artwork"] as? String,
-                   !artwork.isEmpty,
-                   let upgraded = artwork.replacingOccurrences(of: "-large.jpg", with: "-t500x500.jpg") as String?,
-                   let url = URL(string: upgraded) {
-                    track.artworkURL = url
+                   !artwork.isEmpty {
+                    let upgraded = artwork.replacingOccurrences(of: "-large.jpg", with: "-t500x500.jpg")
+                    if let url = URL(string: upgraded) {
+                        track.artworkURL = url
+                    }
                 }
                 currentTrack = track
                 onTrackChanged?(track)
             }
 
+            // Force la lecture si auto_play=true du widget URL n'a pas suffi
+            // (politique de WebKit sur l'autoplay audio peut bloquer)
+            evaluate("scPlay()")
+
         case "play":
+            print("🎵 SC: PLAY event")
             isPlaying = true
             onPlayStateChanged?(true)
 
         case "pause":
+            print("🎵 SC: PAUSE event")
             isPlaying = false
             onPlayStateChanged?(false)
 
@@ -222,15 +254,16 @@ final class SoundCloudController: NSObject {
             }
 
         case "finish":
+            print("🎵 SC: FINISH event")
             isPlaying = false
             onPlayStateChanged?(false)
             onFinish?()
 
         case "error":
-            print("⚠️ SoundCloud Widget error:", payload["message"] ?? "")
+            print("⚠️ SC Widget error:", payload["message"] ?? "")
 
         default:
-            break
+            print("🎵 SC: unknown event:", name)
         }
     }
 

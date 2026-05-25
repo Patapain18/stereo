@@ -202,6 +202,7 @@ struct RadioPanel: View {
         case .appleMusic: return "AM"
         case .soundcloud: return "SC"
         case .iTunesSearch: return "ITUNES"
+        case .localFile: return "LOCAL"
         }
     }
 
@@ -210,6 +211,7 @@ struct RadioPanel: View {
         case .appleMusic: return "Apple Music"
         case .soundcloud: return "SoundCloud"
         case .iTunesSearch: return "Apple Music"
+        case .localFile: return "le Finder"
         }
     }
 }

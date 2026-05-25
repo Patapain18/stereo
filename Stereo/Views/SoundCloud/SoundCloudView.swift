@@ -58,21 +58,21 @@ struct SoundCloudView: View {
             HStack(spacing: 10) {
                 Image(systemName: "link")
                     .foregroundStyle(Theme.ocre)
-                TextField("colle une URL SoundCloud (ex: https://soundcloud.com/artist/track)",
+                TextField("URL d'un track OU d'un profil SoundCloud entier",
                           text: $urlInput)
                     .textFieldStyle(.plain)
                     .font(Theme.serif(size: 14))
                     .focused($focused)
-                    .onSubmit(addTrack)
+                    .onSubmit(submitInput)
 
-                Button(action: addTrack) {
+                Button(action: submitInput) {
                     HStack(spacing: 6) {
                         if scLibrary.isAdding {
                             ProgressView().controlSize(.small)
                         } else {
                             Image(systemName: "plus")
                         }
-                        Text("ajouter")
+                        Text(buttonLabel)
                     }
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(Theme.ink)
@@ -90,6 +90,28 @@ struct SoundCloudView: View {
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(.white.opacity(0.15)))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
+            // Hint d'auto-detection
+            Text(hintLabel)
+                .font(Theme.typewriter(size: 10))
+                .foregroundStyle(Theme.textFaint)
+
+            // Progress bar pendant import bulk
+            if scLibrary.isAdding && scLibrary.importTotal > 0 {
+                HStack(spacing: 10) {
+                    ProgressView(value: Double(scLibrary.importDone), total: Double(scLibrary.importTotal))
+                        .progressViewStyle(.linear)
+                    Text("\(scLibrary.importDone) / \(scLibrary.importTotal)")
+                        .font(Theme.typewriter(size: 10))
+                        .foregroundStyle(Theme.textMute)
+                }
+            }
+
+            // Feedback
+            if let success = scLibrary.lastSuccess {
+                Text("✓ \(success)")
+                    .font(Theme.typewriter(size: 10))
+                    .foregroundStyle(Theme.oliveGreen)
+            }
             if let err = scLibrary.lastError {
                 Text("⚠ \(err)")
                     .font(Theme.typewriter(size: 10))
@@ -98,6 +120,30 @@ struct SoundCloudView: View {
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 12)
+    }
+
+    private var buttonLabel: String {
+        let input = urlInput.trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: input), url.host?.contains("soundcloud.com") == true else {
+            return "ajouter"
+        }
+        let parts = url.path.components(separatedBy: "/").filter { !$0.isEmpty }
+        return parts.count == 1 ? "importer profil" : "ajouter"
+    }
+
+    private var hintLabel: String {
+        let input = urlInput.trimmingCharacters(in: .whitespaces)
+        guard !input.isEmpty,
+              let url = URL(string: input),
+              url.host?.contains("soundcloud.com") == true else {
+            return "track : .../user/track-slug · profil : .../user (importera tous les tracks publics)"
+        }
+        let parts = url.path.components(separatedBy: "/").filter { !$0.isEmpty }
+        switch parts.count {
+        case 1: return "→ profil détecté : importera tous les tracks publics de @\(parts[0])"
+        case 2...: return "→ track détecté"
+        default: return ""
+        }
     }
 
     // MARK: — Content
@@ -182,11 +228,11 @@ struct SoundCloudView: View {
 
     // MARK: — Actions
 
-    private func addTrack() {
+    private func submitInput() {
         let url = urlInput.trimmingCharacters(in: .whitespaces)
         guard !url.isEmpty else { return }
         Task {
-            await scLibrary.addTrack(fromURL: url)
+            await scLibrary.addInput(url)
             if scLibrary.lastError == nil {
                 urlInput = ""
             }

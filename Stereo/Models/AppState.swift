@@ -7,11 +7,12 @@ import Foundation
 import Observation
 
 enum Page: String, CaseIterable {
-    case library, playlists, favorites, search, soundcloud
+    case library, local, playlists, favorites, search, soundcloud
 
     var title: String {
         switch self {
         case .library:    return "Bibliothèque"
+        case .local:      return "Fichiers locaux"
         case .playlists:  return "Playlists"
         case .favorites:  return "Favoris"
         case .search:     return "Rechercher"
@@ -22,6 +23,7 @@ enum Page: String, CaseIterable {
     var icon: String {
         switch self {
         case .library:    return "books.vertical"
+        case .local:      return "folder"
         case .playlists:  return "square.stack"
         case .favorites:  return "heart"
         case .search:     return "magnifyingglass"

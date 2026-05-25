@@ -13,6 +13,7 @@ enum TrackSource: String, Codable, Hashable {
     case appleMusic
     case soundcloud
     case iTunesSearch
+    case localFile
 }
 
 /// Un morceau de musique — local ou distant.
@@ -39,4 +40,7 @@ struct Track: Identifiable, Codable, Equatable, Hashable {
     /// URL HD de la pochette. Soit fournie d'origine (iTunes Search), soit
     /// résolue à la demande par ArtworkLoader pour les tracks Apple Music locaux.
     var artworkURL: URL?
+
+    /// Pour les tracks source = .localFile : URL absolue du fichier sur disque
+    var localFileURL: URL?
 }

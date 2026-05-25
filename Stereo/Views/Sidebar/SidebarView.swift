@@ -238,6 +238,7 @@ extension Page {
     var glyph: String {
         switch self {
         case .library:    return "♪"
+        case .local:      return "▢"
         case .search:     return "⌕"
         case .favorites:  return "♥"
         case .playlists:  return "≡"

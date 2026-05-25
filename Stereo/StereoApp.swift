@@ -15,6 +15,8 @@ struct StereoApp: App {
     @State private var artwork = ArtworkLoader()
     @State private var scLibrary = SoundCloudLibrary()
     @State private var scController = SoundCloudController()
+    @State private var localLib = LocalLibrary()
+    @State private var localPlayer = LocalPlayer()
 
     @State private var controller = MusicController()
     @State private var watcher: MusicWatcher? = nil
@@ -30,6 +32,8 @@ struct StereoApp: App {
                 .environment(artwork)
                 .environment(scLibrary)
                 .environment(scController)
+                .environment(localLib)
+                .environment(localPlayer)
                 .environment(\.musicController, controller)
                 .environment(\.musicWatcher, watcher)
                 .environment(\.playbackRouter, router)
@@ -45,6 +49,7 @@ struct StereoApp: App {
                             watcher: w,
                             amController: controller,
                             scController: scController,
+                            localPlayer: localPlayer,
                             libraryStore: library
                         )
                     }

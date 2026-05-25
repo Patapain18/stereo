@@ -102,6 +102,7 @@ struct ContentView: View {
     private var pageContent: some View {
         switch app.page {
         case .library:    LibraryView()
+        case .local:      LocalView()
         case .playlists:  PlaylistsView()
         case .favorites:  FavoritesView()
         case .search:     SearchView()
