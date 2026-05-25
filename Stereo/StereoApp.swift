@@ -13,9 +13,12 @@ struct StereoApp: App {
     @State private var library = LibraryStore()
     @State private var favorites = Favorites()
     @State private var artwork = ArtworkLoader()
+    @State private var scLibrary = SoundCloudLibrary()
+    @State private var scController = SoundCloudController()
 
     @State private var controller = MusicController()
     @State private var watcher: MusicWatcher? = nil
+    @State private var router: PlaybackRouter? = nil
 
     var body: some Scene {
         WindowGroup {
@@ -25,17 +28,42 @@ struct StereoApp: App {
                 .environment(library)
                 .environment(favorites)
                 .environment(artwork)
+                .environment(scLibrary)
+                .environment(scController)
                 .environment(\.musicController, controller)
                 .environment(\.musicWatcher, watcher)
+                .environment(\.playbackRouter, router)
                 .task {
                     if watcher == nil {
                         let w = MusicWatcher(player: player)
                         w.start()
                         watcher = w
                     }
+                    if router == nil, let w = watcher {
+                        router = PlaybackRouter(
+                            player: player,
+                            watcher: w,
+                            amController: controller,
+                            scController: scController,
+                            libraryStore: library
+                        )
+                    }
                 }
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1100, height: 700)
+    }
+}
+
+// MARK: — EnvironmentKey pour le router
+
+private struct PlaybackRouterKey: EnvironmentKey {
+    static let defaultValue: PlaybackRouter? = nil
+}
+
+extension EnvironmentValues {
+    var playbackRouter: PlaybackRouter? {
+        get { self[PlaybackRouterKey.self] }
+        set { self[PlaybackRouterKey.self] = newValue }
     }
 }

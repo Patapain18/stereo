@@ -105,6 +105,7 @@ struct ContentView: View {
         case .playlists:  PlaylistsView()
         case .favorites:  FavoritesView()
         case .search:     SearchView()
+        case .soundcloud: SoundCloudView()
         }
     }
 }

@@ -12,6 +12,7 @@ struct MiniPlayer: View {
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
     @Environment(\.cassetteNamespace) private var cassetteNS
+    @Environment(\.playbackRouter) private var router
 
     var body: some View {
         @Bindable var app = app
@@ -63,15 +64,17 @@ struct MiniPlayer: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             HStack(spacing: 8) {
-                Button { controller.previousTrack() } label: {
+                Button { (router ?? nil)?.previousTrack() ?? controller.previousTrack() } label: {
                     Image(systemName: "backward.fill")
                 }
-                Button { controller.togglePlay() } label: {
+                Button {
+                    if let r = router { r.togglePlay() } else { controller.togglePlay() }
+                } label: {
                     Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
                         .frame(width: 28, height: 28)
                         .background(Circle().fill(.white.opacity(0.1)))
                 }
-                Button { controller.nextTrack() } label: {
+                Button { (router ?? nil)?.nextTrack() ?? controller.nextTrack() } label: {
                     Image(systemName: "forward.fill")
                 }
 

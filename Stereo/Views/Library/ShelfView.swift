@@ -10,6 +10,7 @@ struct ShelfView: View {
 
     @Environment(LibraryStore.self) private var library
     @Environment(Favorites.self) private var favorites
+    @Environment(\.playbackRouter) private var router
 
     private let columns = [
         GridItem(.adaptive(minimum: 180, maximum: 220), spacing: 16)
@@ -20,7 +21,7 @@ struct ShelfView: View {
             LazyVGrid(columns: columns, spacing: 20) {
                 ForEach(tracks) { track in
                     Button {
-                        library.play(track)
+                        if let r = router { r.play(track) } else { library.play(track) }
                     } label: {
                         VStack(alignment: .leading, spacing: 8) {
                             CassetteThumb(track: track)
@@ -37,7 +38,9 @@ struct ShelfView: View {
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
-                        Button("Lire maintenant") { library.play(track) }
+                        Button("Lire maintenant") {
+                            if let r = router { r.play(track) } else { library.play(track) }
+                        }
                         Divider()
                         Button(favorites.contains(track) ? "Retirer des favoris" : "Ajouter aux favoris") {
                             favorites.toggle(track)

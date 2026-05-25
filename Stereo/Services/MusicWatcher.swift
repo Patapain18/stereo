@@ -24,6 +24,10 @@ final class MusicWatcher {
     private var timer: Timer?
     private var lastPersistentID: String?
 
+    /// Quand `false`, le watcher cesse d'écraser PlayerState (utilisé quand
+    /// une autre source — SoundCloud — prend la main via PlaybackRouter).
+    var enabled: Bool = true
+
     init(player: PlayerState) {
         self.player = player
     }
@@ -58,11 +62,13 @@ final class MusicWatcher {
 
     @objc private func onPlayerInfo(_ note: Notification) {
         // Une notif est arrivée d'Apple Music : refresh complet
+        guard enabled else { return }
         Task { @MainActor in self.refreshAll() }
     }
 
     /// Tick fréquent (4×/sec) : on met juste à jour la position et l'état play/pause
     private func tick() {
+        guard enabled else { return }
         guard let info = controller.currentTrack() else {
             if player.current != nil {
                 player.current = nil

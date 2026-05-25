@@ -15,6 +15,7 @@ import AppKit
 struct RadioPanel: View {
     @Environment(PlayerState.self) private var player
     @Environment(\.musicController) private var controller
+    @Environment(\.playbackRouter) private var router
 
     var body: some View {
         VStack(spacing: 18) {
@@ -117,7 +118,8 @@ struct RadioPanel: View {
                 playing: player.isPlaying,
                 color: Theme.ocre,
                 onSeek: { p in
-                    controller.seek(to: p * track.duration)
+                    let target = p * track.duration
+                    if let r = router { r.seek(toSeconds: target) } else { controller.seek(to: target) }
                 }
             )
             .frame(height: 20)
@@ -137,16 +139,16 @@ struct RadioPanel: View {
     private var transport: some View {
         HStack(spacing: 12) {
             TransportButton(systemImage: "backward.fill") {
-                controller.previousTrack()
+                if let r = router { r.previousTrack() } else { controller.previousTrack() }
             }
             TransportButton(
                 systemImage: player.isPlaying ? "pause.fill" : "play.fill",
                 primary: true
             ) {
-                controller.togglePlay()
+                if let r = router { r.togglePlay() } else { controller.togglePlay() }
             }
             TransportButton(systemImage: "forward.fill") {
-                controller.nextTrack()
+                if let r = router { r.nextTrack() } else { controller.nextTrack() }
             }
         }
     }

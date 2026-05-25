@@ -11,6 +11,11 @@ struct TrackListView: View {
     @Environment(LibraryStore.self) private var library
     @Environment(Favorites.self) private var favorites
     @Environment(PlayerState.self) private var player
+    @Environment(\.playbackRouter) private var router
+
+    private func play(_ track: Track) {
+        if let r = router { r.play(track) } else { library.play(track) }
+    }
 
     var body: some View {
         ScrollView {
@@ -21,11 +26,9 @@ struct TrackListView: View {
                         index: index + 1,
                         isCurrent: player.current?.id == track.id
                     )
-                    .onTapGesture(count: 2) {
-                        library.play(track)
-                    }
+                    .onTapGesture(count: 2) { play(track) }
                     .contextMenu {
-                        Button("Lire") { library.play(track) }
+                        Button("Lire") { play(track) }
                         Button(favorites.contains(track) ? "Retirer favoris" : "Ajouter aux favoris") {
                             favorites.toggle(track)
                         }
