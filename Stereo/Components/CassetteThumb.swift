@@ -52,8 +52,9 @@ struct CassetteThumb: View {
                                 .fill(Color.black.opacity(0.15))
                         )
                 } else {
-                    CoverArt(id: track?.id ?? "x")
+                    CoverArtImage(id: track?.id ?? "x")
                         .frame(width: w, height: h)
+                        .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 6)

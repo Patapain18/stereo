@@ -26,24 +26,26 @@ struct AlbumCover: View {
 
     @Environment(ArtworkLoader.self) private var artwork
 
-    private var image: NSImage? {
-        guard let id = track?.id else { return nil }
-        return artwork.image(for: id)
-    }
+    /// Cache local @State — sans ça chaque update du cache global ArtworkLoader
+    /// (un nouveau download résolu) invalide TOUTES les AlbumCover de la grille
+    /// (couplage @Observable). On poll en local et on freeze dès qu'on a l'image.
+    @State private var cachedImage: NSImage? = nil
 
     var body: some View {
         GeometryReader { geo in
             let side = min(geo.size.width, geo.size.height)
             ZStack {
-                if let img = image {
+                if let img = cachedImage {
                     Image(nsImage: img)
                         .resizable()
+                        .interpolation(.medium)
                         .scaledToFill()
                         .frame(width: side, height: side)
                         .clipped()
                 } else if let track {
-                    CoverArt(id: track.id)
+                    CoverArtImage(id: track.id)
                         .frame(width: side, height: side)
+                        .clipped()
                 } else {
                     // Empty state placeholder
                     Theme.surface
@@ -75,11 +77,24 @@ struct AlbumCover: View {
             .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 3)
         }
         .aspectRatio(1, contentMode: .fit)
-        .onAppear {
-            if let t = track { artwork.ensureLoaded(for: t) }
-        }
-        .onChange(of: track?.id) { _, _ in
-            if let t = track { artwork.ensureLoaded(for: t) }
+        .task(id: track?.id) {
+            guard let t = track else { cachedImage = nil; return }
+            // Check immédiat
+            if let img = artwork.image(for: t.id) {
+                cachedImage = img
+                return
+            }
+            cachedImage = nil
+            artwork.ensureLoaded(for: t)
+            // Poll local jusqu'à résolution (s'arrête si la card disparaît du scroll)
+            while cachedImage == nil {
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                if Task.isCancelled { return }
+                if let img = artwork.image(for: t.id) {
+                    cachedImage = img
+                    return
+                }
+            }
         }
     }
 }

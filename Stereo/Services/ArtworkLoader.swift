@@ -41,10 +41,13 @@ final class ArtworkLoader {
     private let diskCache = ArtworkDiskCache()
 
     init() {
-        // Migration : v4 introduit la validation stricte du match (rejet des
-        // fausses pochettes pour artistes obscurs). On purge complètement le
-        // cache pour invalider les fausses pochettes déjà téléchargées.
-        let currentStrategyVersion = 5
+        // Migrations successives :
+        //  v4 → validation stricte du match (purge des fausses pochettes)
+        //  v5 → cascade 4 sources (iTunes album/track, Deezer, MusicBrainz)
+        //  v6 → downsample à 400px de TOUT (cache disque + RAM). Les vieilles
+        //       images 1000×1000 mangent inutilement la RAM et ralentissent le
+        //       scroll → purge totale pour forcer re-fetch en format optimisé.
+        let currentStrategyVersion = 6
         let storedVersion = UserDefaults.standard.integer(forKey: "stereo.artwork.strategyVersion")
         if storedVersion < currentStrategyVersion {
             diskCache.clearAll()
@@ -193,16 +196,17 @@ final class ArtworkLoader {
             return
         }
 
-        // 3. Téléchargement
+        // 3. Téléchargement + downsample (économise RAM/disque/render).
+        // Le CDN Apple sert souvent du 1000×1000 alors qu'on affiche en 200×200.
         do {
-            let (data, _) = try await URLSession.shared.data(from: imageURL)
-            guard let image = NSImage(data: data) else {
+            let (rawData, _) = try await URLSession.shared.data(from: imageURL)
+            let optimizedData = Self.downsample(data: rawData, maxPixelSize: 400) ?? rawData
+            guard let image = NSImage(data: optimizedData) else {
                 markUnresolved(track.id)
                 return
             }
             cache[track.id] = image
-            // Persiste sur disque pour les démarrages suivants
-            await diskCache.save(data: data, for: track.id)
+            await diskCache.save(data: optimizedData, for: track.id)
         } catch {
             markUnresolved(track.id)
         }

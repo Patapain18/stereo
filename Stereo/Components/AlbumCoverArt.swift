@@ -31,8 +31,9 @@ struct AlbumCoverArt: View {
                         .frame(width: side, height: side)
                         .clipped()
                 } else {
-                    CoverArt(id: album.id)
+                    CoverArtImage(id: album.id)
                         .frame(width: side, height: side)
+                        .clipped()
                 }
                 LinearGradient(
                     colors: [Color.white.opacity(0.08), .clear, Color.black.opacity(0.08)],
