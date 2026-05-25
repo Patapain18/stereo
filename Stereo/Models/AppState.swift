@@ -22,9 +22,9 @@ enum Page: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .library:    return "books.vertical"
+        case .library:    return "music.note"
         case .local:      return "folder"
-        case .playlists:  return "square.stack"
+        case .playlists:  return "music.note.list"
         case .favorites:  return "heart"
         case .search:     return "magnifyingglass"
         case .soundcloud: return "waveform"

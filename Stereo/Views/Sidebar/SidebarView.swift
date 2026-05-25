@@ -2,9 +2,12 @@
 //  SidebarView.swift
 //  Stereo · Views/Sidebar/SidebarView.swift
 //
-//  Sprint 4 polish : sidebar refondue avec titre scribble + nav avec icônes
-//  manuscrites + section sources de filtrage + theme toggle. Inspirée de la
-//  Sidebar de hifi-radio.jsx.
+//  Sidebar refondue : design dense + harmonieux, icônes SF cohérentes,
+//  sélection plus discrète (bande gauche ocre + halo subtil), footer
+//  compact.
+//
+//  Principe directeur : laisser respirer le titre et les playlists,
+//  resserrer la nav primaire pour réduire la "scroll fatigue" verticale.
 //
 
 import SwiftUI
@@ -16,11 +19,11 @@ struct SidebarView: View {
     var body: some View {
         @Bindable var app = app
 
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 14) {
             header
 
             navItems
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 6)
 
             playlistsSection
 
@@ -28,11 +31,9 @@ struct SidebarView: View {
 
             footerControls
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 18)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        // Force le même fond que le detail panel — sinon la sidebar a son
-        // material translucent par défaut et un seam visible apparaît.
         .background(Theme.background)
         .scrollContentBackground(.hidden)
         .toolbarBackground(Theme.background, for: .windowToolbar)
@@ -43,38 +44,38 @@ struct SidebarView: View {
     private var header: some View {
         @Bindable var app = app
         return HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text("ma")
-                        .font(Theme.scribble(size: 26))
+                        .font(Theme.scribble(size: 24))
                         .foregroundStyle(Theme.inkLight)
                     Text("stéréo")
-                        .font(Theme.scribble(size: 30))
+                        .font(Theme.scribble(size: 28))
                         .foregroundStyle(Theme.inkLight)
                         .overlay(
                             UnderlineSketch()
                                 .stroke(Theme.ocre, lineWidth: 1.4)
                                 .frame(height: 6)
-                                .offset(y: 6),
+                                .offset(y: 5),
                             alignment: .bottom
                         )
                 }
-                Text("café à 17h")
-                    .font(Theme.typewriter(size: 10))
-                    .tracking(1)
+                Text(greeting)
+                    .font(Theme.typewriter(size: 9.5))
+                    .tracking(1.2)
                     .foregroundStyle(Theme.textMute)
+                    .padding(.top, 2)
             }
 
             Spacer()
 
-            // Bouton pour masquer la sidebar
             Button {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                     app.sidebarVisible = false
                 }
             } label: {
                 Image(systemName: "sidebar.left")
-                    .font(.system(size: 12))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(Theme.textMute)
                     .frame(width: 24, height: 24)
                     .overlay(
@@ -84,15 +85,30 @@ struct SidebarView: View {
             .buttonStyle(.pressFeedback)
             .help("Masquer la sidebar (Cmd+Shift+S)")
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 4)
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
+    }
+
+    /// Greeting court basé sur l'heure courante — plus poétique que
+    /// l'heure brute sans tomber dans l'over-engineering.
+    private var greeting: String {
+        let h = Calendar.current.component(.hour, from: Date())
+        let label: String
+        switch h {
+        case 5..<11:  label = "café matinal"
+        case 11..<14: label = "pause midi"
+        case 14..<18: label = "session après-midi"
+        case 18..<22: label = "session du soir"
+        default:      label = "session nocturne"
+        }
+        return "\(label) · \(h)h"
     }
 
     // MARK: — Nav
 
     private var navItems: some View {
         @Bindable var app = app
-        return VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: 1) {
             ForEach(Page.allCases, id: \.self) { page in
                 navRow(page: page, current: app.page == page) {
                     app.page = page
@@ -104,29 +120,32 @@ struct SidebarView: View {
 
     private func navRow(page: Page, current: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 12) {
-                Text(page.glyph)
-                    .font(Theme.scribble(size: 22))
-                    .foregroundStyle(current ? Theme.inkLight : Theme.textMute)
-                    .frame(width: 22, alignment: .center)
+            HStack(spacing: 11) {
+                Image(systemName: page.icon)
+                    .font(.system(size: 13, weight: current ? .medium : .regular))
+                    .foregroundStyle(current ? Theme.ocre : Theme.textMute)
+                    .frame(width: 18, alignment: .center)
+
                 Text(page.title.lowercased())
-                    .font(Theme.hand(size: 17))
-                    .foregroundStyle(current ? Theme.inkLight : Theme.textMute)
+                    .font(Theme.hand(size: 16))
+                    .foregroundStyle(current ? Theme.inkLight : Theme.textSoft)
+
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(current ? Theme.surfaceHover : .clear)
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(current ? Theme.ocre.opacity(0.07) : .clear)
             )
             .overlay(
                 Rectangle()
-                    .fill(current ? Theme.ocre.opacity(0.7) : .clear)
-                    .frame(width: 2)
-                    .padding(.vertical, 4),
+                    .fill(current ? Theme.ocre : .clear)
+                    .frame(width: 2.5)
+                    .padding(.vertical, 6),
                 alignment: .leading
             )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -135,59 +154,74 @@ struct SidebarView: View {
 
     private var playlistsSection: some View {
         @Bindable var app = app
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
                 Text("MES PLAYLISTS")
-                    .font(Theme.typewriter(size: 10))
-                    .tracking(1.5)
+                    .font(Theme.typewriter(size: 9.5))
+                    .tracking(1.6)
                     .foregroundStyle(Theme.textMute)
-                Spacer()
-                Text("\(library.playlists.count)")
-                    .font(Theme.typewriter(size: 10))
+                Text("·")
+                    .font(Theme.typewriter(size: 9.5))
                     .foregroundStyle(Theme.textFaint)
+                Text("\(library.playlists.count)")
+                    .font(Theme.typewriter(size: 9.5))
+                    .foregroundStyle(Theme.textFaint)
+                Spacer()
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 12)
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     ForEach(library.playlists.prefix(20)) { pl in
-                        Button {
-                            app.page = .playlists
-                            app.pageArg = pl.id
-                        } label: {
-                            HStack(spacing: 10) {
-                                Image(systemName: "music.note.list")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Theme.ocre.opacity(0.7))
-                                    .frame(width: 18)
-                                Text(pl.name)
-                                    .font(Theme.hand(size: 14))
-                                    .foregroundStyle(Theme.textSoft)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text("\(pl.trackCount)")
-                                    .font(Theme.typewriter(size: 9))
-                                    .foregroundStyle(Theme.textFaint)
-                            }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                        }
-                        .buttonStyle(.plain)
+                        playlistRow(pl)
                     }
                 }
             }
-            .frame(maxHeight: 280)
+            .frame(maxHeight: 260)
         }
+    }
+
+    private func playlistRow(_ pl: PlaylistRef) -> some View {
+        @Bindable var app = app
+        let isActive = app.page == .playlists && app.pageArg == pl.id
+        return Button {
+            app.page = .playlists
+            app.pageArg = pl.id
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "music.note.list")
+                    .font(.system(size: 10))
+                    .foregroundStyle(isActive ? Theme.ocre : Theme.ocre.opacity(0.55))
+                    .frame(width: 14)
+                Text(pl.name)
+                    .font(Theme.hand(size: 13.5))
+                    .foregroundStyle(isActive ? Theme.inkLight : Theme.textSoft)
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+                Text("\(pl.trackCount)")
+                    .font(Theme.typewriter(size: 9))
+                    .foregroundStyle(Theme.textFaint)
+                    .monospacedDigit()
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isActive ? Theme.ocre.opacity(0.07) : .clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: — Footer
 
     private var footerControls: some View {
         @Bindable var app = app
-        return VStack(spacing: 0) {
-            Divider()
-                .background(Theme.border)
-                .padding(.bottom, 10)
+        return VStack(spacing: 10) {
+            Rectangle()
+                .fill(Theme.border.opacity(0.6))
+                .frame(height: 1)
 
             HStack(spacing: 8) {
                 ThemeToggleButton()
@@ -199,19 +233,30 @@ struct SidebarView: View {
                         app.radioVisible.toggle()
                     }
                 } label: {
-                    Text(app.radioVisible ? "panneau ▸" : "◂ panneau")
-                        .font(Theme.hand(size: 13))
-                        .foregroundStyle(Theme.inkLight)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Theme.borderStrong, lineWidth: 1)
-                        )
+                    HStack(spacing: 6) {
+                        Text("panneau")
+                            .font(Theme.hand(size: 13))
+                            .foregroundStyle(Theme.textSoft)
+                        Image(systemName: "sidebar.right")
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundStyle(app.radioVisible ? Theme.ocre : Theme.textMute)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 7)
+                            .fill(app.radioVisible ? Theme.ocre.opacity(0.07) : .clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7)
+                            .stroke(Theme.border, lineWidth: 1)
+                    )
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help(app.radioVisible ? "Masquer le panneau" : "Afficher le panneau")
             }
-            .padding(.horizontal, 8)
+            .padding(.horizontal, 4)
         }
     }
 }
@@ -247,29 +292,14 @@ private struct ThemeToggleButton: View {
             }
         } label: {
             Image(systemName: app.isNightMode ? "moon.fill" : "sun.max.fill")
-                .font(.system(size: 14))
-                .foregroundStyle(Theme.inkLight)
-                .frame(width: 32, height: 32)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.textSoft)
+                .frame(width: 28, height: 28)
                 .background(
-                    Circle().stroke(Theme.borderStrong, lineWidth: 1.5)
+                    Circle().stroke(Theme.border, lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
         .help(app.isNightMode ? "Passer en mode jour" : "Passer en mode nuit")
-    }
-}
-
-// MARK: — Page glyph (icône scribble)
-
-extension Page {
-    var glyph: String {
-        switch self {
-        case .library:    return "♪"
-        case .local:      return "▢"
-        case .search:     return "⌕"
-        case .favorites:  return "♥"
-        case .playlists:  return "≡"
-        case .soundcloud: return "≈"
-        }
     }
 }
